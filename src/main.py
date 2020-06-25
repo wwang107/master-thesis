@@ -1,10 +1,12 @@
-from data.Dataloader import COCOHuamnDataset
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
-from PIL import Image
+from config.defualt import get_cfg_defaults
+from data.build import make_dataloader
+
 
 if __name__ == "__main__":
-    dataDir = '/media/weiwang/Elements/coco'
-    dataType = 'val2017'
-    dataset = COCOHuamnDataset(dataDir, dataType)
-    iter(DataLoader(dataset)).next()
+    cfg = get_cfg_defaults()
+    cfg.freeze()
+    print(cfg)
+
+    data_loader = make_dataloader(cfg, is_train=True)
+    iter(data_loader).next()
+    pass

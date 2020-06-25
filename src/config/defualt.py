@@ -1,0 +1,28 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+
+from yacs.config import CfgNode as CN
+
+_C = CN()
+
+# DATASET related params
+_C.DATASET = CN()
+_C.DATASET.ROOT = '/media/weiwang/Elements/coco'
+_C.DATASET.DATASET = 'coco_kpt'
+_C.DATASET.DATASET_TEST = 'coco'
+_C.DATASET.NUM_JOINTS = 17
+_C.DATASET.MAX_NUM_PEOPLE = 30
+# _C.DATASET.TRAIN = 'train2017'
+_C.DATASET.TRAIN = 'val2017'
+_C.DATASET.TEST = 'val2017'
+_C.DATASET.DATA_FORMAT = 'jpg'
+_C.DATASET.OUTPUT_SIZE = (256, 256)
+
+def get_cfg_defaults():
+  """Get a yacs CfgNode object with default values for my_project."""
+  # Return a clone so that the defaults will not be altered
+  # This is for the "local variable" use pattern
+  return _C.clone()
