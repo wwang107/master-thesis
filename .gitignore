@@ -4,3 +4,5 @@ dataset/
 cocoapi
 
 __pycache__
+
+**/images/

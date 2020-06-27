@@ -15,8 +15,15 @@ import cv2
 import numpy as np
 import torchvision
 
-from dataset import VIS_CONFIG
+from data import VIS_CONFIG
 
+
+def add_directional_keypoints(image, direct_keypoints, color, dataset='COCO'):
+    for keypt in direct_keypoints:
+        if keypt[2] > 0:
+            cv2.circle(image, (int(keypt[0]), int(keypt[1])), 1, color, 2)
+    
+    return image
 
 def add_joints(image, joints, color, dataset='COCO'):
     part_idx = VIS_CONFIG[dataset]['part_idx']
@@ -47,6 +54,21 @@ def add_joints(image, joints, color, dataset='COCO'):
     return image
 
 
+def save_image(image, joints, direct_keypoints, file_name, dataset='COCO'):
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    for person in joints:
+        color = np.random.randint(0, 255, size=3)
+        color = [int(i) for i in color]
+        add_joints(image, person, color, dataset=dataset)
+    for person in direct_keypoints:
+        color = np.random.randint(0, 255, size=3)
+        color = [int(i) for i in color]
+        add_directional_keypoints(
+            image, person, color, dataset=dataset)
+
+    cv2.imwrite(file_name, image)
+
 def save_valid_image(image, joints, file_name, dataset='COCO'):
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
@@ -57,6 +79,28 @@ def save_valid_image(image, joints, file_name, dataset='COCO'):
 
     cv2.imwrite(file_name, image)
 
+
+def make_heatmaps_cpu(image, heatmaps):
+    heatmaps = heatmaps*255
+
+    num_joints, height, width = heatmaps.shape
+    image_resized = cv2.resize(image, (int(width), int(height)))
+
+    image_grid = np.zeros((height, (num_joints+1)*width, 3), dtype=np.uint8)
+
+    for j in range(num_joints):
+        # add_joints(image_resized, joints[:, j, :])
+        heatmap = heatmaps[j, :, :]
+        colored_heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        image_fused = colored_heatmap*0.7 + image_resized*0.3
+
+        width_begin = width * (j+1)
+        width_end = width * (j+2)
+        image_grid[:, width_begin:width_end, :] = image_fused
+
+    image_grid[:, 0:width, :] = image_resized
+
+    return image_grid
 
 def make_heatmaps(image, heatmaps):
     heatmaps = heatmaps.mul(255)\

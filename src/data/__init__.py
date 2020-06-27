@@ -3,11 +3,6 @@
 # Licensed under the MIT License.
 # Written by Bin Xiao (leoxiaobin@gmail.com)
 # ------------------------------------------------------------------------------
-
-from .COCOKeypoints import CocoKeypoints as coco
-from .build import make_dataloader
-from .build import make_test_dataloader
-
 # dataset dependent configuration for visualization
 coco_part_labels = [
     'nose', 'eye_l', 'eye_r', 'ear_l', 'ear_r',
@@ -34,3 +29,5 @@ VIS_CONFIG = {
         'part_orders': coco_part_orders
     }
 }
+
+

@@ -15,25 +15,28 @@ import visdom
 import pycocotools
 from .COCODataset import CocoDataset
 
+from utils.vis import save_image, make_heatmaps_cpu
+IMAGE_FOLDER = '/home/weiwang/master-thesis/images'
+
 
 class CocoKeypoints(CocoDataset):
     def __init__(self,
                  cfg,
                  dataset_name,
                  remove_images_without_annotations,
+                 direction_keypoints_generator=None,
                  heatmap_generator=None,
-                 joints_generator=None,
                  transforms=None):
         super().__init__(cfg.DATASET.ROOT,
                          dataset_name,
                          cfg.DATASET.DATA_FORMAT)
 
-        self.viz = visdom.Visdom()
-
         self.num_joints = cfg.DATASET.NUM_JOINTS
+        self.transforms = transforms
+        self.heatmap_generator = heatmap_generator
+        self.direction_keypoints_generator = direction_keypoints_generator
 
     def __getitem__(self, idx):
-        idx = 255
         img, anno = super().__getitem__(idx)
         mask = self.get_mask(anno, idx)
 
@@ -43,6 +46,18 @@ class CocoKeypoints(CocoDataset):
         ]
 
         joints = self.get_joints(anno)
+
+        if self.transforms:
+            img, mask, joints = self.transforms(
+                img, mask, joints
+            )
+        
+        keypoints = np.concatenate(
+            (joints, self.direction_keypoints_generator(joints, 0.1)), axis=1)
+
+        # make_heatmaps_cpu(img, heatmap)
+
+        return {"img": img, "joints": joints}
 
     def get_mask(self, anno, idx):
         coco = self.coco
@@ -71,5 +86,5 @@ class CocoKeypoints(CocoDataset):
         for i, obj in enumerate(anno):
             joints[i, :self.num_joints, :3] = \
                 np.array(obj['keypoints']).reshape([-1, 3])
-                
+
         return joints
