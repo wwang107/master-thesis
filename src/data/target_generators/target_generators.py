@@ -24,6 +24,7 @@ class DirectionalKeypointsGenerator():
                             (1 - t) * joints[k, sk[0], 1] + \
                             t * joints[k, sk[1], 1]
                         direct_keypoints[k, 2*i+j, 2] = 1
+                    
         return direct_keypoints
 
 

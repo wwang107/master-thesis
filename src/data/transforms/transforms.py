@@ -19,7 +19,7 @@ import torchvision
 from torchvision.transforms import functional as F
 import imgaug as ia
 import imgaug.augmenters as iaa
-from imgaug.augmentables import Keypoint, KeypointsOnImage
+from imgaug.augmentables import Keypoint, KeypointsOnImage, SegmentationMapsOnImage
 
 
 class Compose(object):
@@ -42,7 +42,7 @@ class Compose(object):
 
 class ToTensor(object):
     def __call__(self, image, mask, joints):
-        return F.to_tensor(image), mask, joints
+        return F.to_tensor(image), F.to_tensor(mask.astype(int)), joints
 
 
 class Normalize(object):
@@ -59,21 +59,13 @@ class RandomHorizontalFlip(object):
     def __init__(self, flip_index, output_size, prob=0.5):
         self.flip_index = flip_index
         self.prob = prob
-        self.output_size = output_size if isinstance(output_size, list) \
-            else [output_size]
+        self.output_size = output_size
 
     def __call__(self, image, mask, joints):
-        assert isinstance(mask, list)
-        assert isinstance(joints, list)
-        assert len(mask) == len(joints)
-        assert len(mask) == len(self.output_size)
-
         if random.random() < self.prob:
             image = image[:, ::-1] - np.zeros_like(image)
-            for i, _output_size in enumerate(self.output_size):
-                mask[i] = mask[i][:, ::-1] - np.zeros_like(mask[i])
-                joints[i] = joints[i][:, self.flip_index]
-                joints[i][:, :, 0] = _output_size - joints[i][:, :, 0] - 1
+            joints = joints[:, self.flip_index]
+            joints[:, :, 0] = self.output_size - joints[:, :, 0] - 1
 
         return image, mask, joints
 
@@ -95,6 +87,7 @@ class RandomAffineTransform(object):
         self.max_translate = max_translate
 
     def __call__(self, image, mask, joints):
+        scale = self.output_size/self.input_size # scale factor to transform input size to output size
         seq = iaa.Sequential([
             iaa.Affine(
                 rotate=(-self.max_rotation, self.max_rotation),
@@ -103,17 +96,14 @@ class RandomAffineTransform(object):
                     "x": (-self.max_translate, self.max_translate),
                     "y": (-self.max_translate, self.max_translate)}
             ),
-            iaa.Resize(self.input_size)]
+            iaa.Resize(self.input_size)] # resize both x and y, so the output image is a squre image
         ).to_deterministic()
-        for i, pr in enumerate(joints):
-            kpt = KeypointsOnImage.from_xy_array(pr[:, :2], image.shape)
+
+        for i, person in enumerate(joints):
+            kpt = KeypointsOnImage.from_xy_array(person[:, :2], image.shape)
             kps_aug = seq.augment_keypoints(kpt)
-            joints[i,:,:2] = KeypointsOnImage.to_xy_array(kps_aug)
-            
-        image_aug = seq.augment_image(image)
-
-        from utils.vis import save_valid_image
-        save_valid_image(
-            image_aug, joints, '/home/weiwang/master-thesis/images/test.png')
-
-        return image, mask, joints
+            joints[i,:,:2] = KeypointsOnImage.to_xy_array(kps_aug) * scale # scale the joint coordinates to output coordinate
+        
+        seq_mask = SegmentationMapsOnImage(mask, shape=mask.shape)
+        image_aug, mask_aug = seq(image=image, segmentation_maps=seq_mask)
+        return image_aug, mask_aug.get_arr(), joints

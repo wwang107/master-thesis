@@ -1,23 +1,12 @@
-# ------------------------------------------------------------------------------
-# Copyright (c) Microsoft
-# Licensed under the MIT License.
-# Written by Bin Xiao (leoxiaobin@gmail.com)
-# Modified by Bowen Cheng (bcheng9@illinois.edu)
-# ------------------------------------------------------------------------------
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import visdom
+import torch
 
 import pycocotools
 from .COCODataset import CocoDataset
-
-from utils.vis import save_image, make_heatmaps_cpu
-IMAGE_FOLDER = '/home/weiwang/master-thesis/images'
-
 
 class CocoKeypoints(CocoDataset):
     def __init__(self,
@@ -32,6 +21,13 @@ class CocoKeypoints(CocoDataset):
                          cfg.DATASET.DATA_FORMAT)
 
         self.num_joints = cfg.DATASET.NUM_JOINTS
+
+        if remove_images_without_annotations:
+            self.ids = [
+                img_id
+                for img_id in self.ids
+                if len(self.coco.getAnnIds(imgIds=img_id, iscrowd=None)) > 0
+            ]
         self.transforms = transforms
         self.heatmap_generator = heatmap_generator
         self.direction_keypoints_generator = direction_keypoints_generator
@@ -51,13 +47,10 @@ class CocoKeypoints(CocoDataset):
             img, mask, joints = self.transforms(
                 img, mask, joints
             )
-        
-        keypoints = np.concatenate(
-            (joints, self.direction_keypoints_generator(joints, 0.1)), axis=1)
+        dir_keypoints = self.direction_keypoints_generator(joints, 0.1)        
+        heatmap = self.heatmap_generator(dir_keypoints)
 
-        # make_heatmaps_cpu(img, heatmap)
-
-        return {"img": img, "joints": joints}
+        return {'images': img, 'heatmaps': heatmap, 'joints': joints, 'directional_keypoints': dir_keypoints}
 
     def get_mask(self, anno, idx):
         coco = self.coco

@@ -21,11 +21,7 @@ def build_transforms(cfg, is_train=True):
     assert is_train is True, 'Please only use build_transforms for training.'
     # assert isinstance(cfg.DATASET.OUTPUT_SIZE, (list, tuple)
     #                   ), 'DATASET.OUTPUT_SIZE should be list or tuple'
-    if is_train:
-        pass
-    else:
-        pass
-    # coco_flip_index = [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15]
+    
     # if cfg.DATASET.WITH_CENTER:
         # coco_flip_index.append(17)
     if 'coco' in cfg.DATASET.DATASET:
@@ -51,7 +47,7 @@ def build_transforms(cfg, is_train=True):
                 max_scale,
                 max_translate,
             ),
-            # T.RandomHorizontalFlip(coco_flip_index, output_size, flip),
+            T.RandomHorizontalFlip(coco_flip_index, output_size, prob=1),
             # T.ToTensor(),
             # T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ]
