@@ -48,7 +48,9 @@ class CocoKeypoints(CocoDataset):
                 img, mask, joints
             )
         dir_keypoints = self.direction_keypoints_generator(joints, 0.1)        
-        heatmap = self.heatmap_generator(dir_keypoints)
+        heatmap = self.heatmap_generator(
+            np.concatenate((joints, dir_keypoints), axis=1)
+            )
 
         return {'images': img, 'heatmaps': heatmap, 'joints': joints, 'directional_keypoints': dir_keypoints}
 

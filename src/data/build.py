@@ -34,8 +34,11 @@ coco_skeleton = {
 
 
 def build_dataset(cfg, is_train):
-    transforms = build_transforms(cfg, is_train)
-
+    if is_train:
+        transforms = build_transforms(cfg, is_train)
+    else:
+        transforms = None
+        
     dataset_name = cfg.DATASET.TRAIN if is_train else cfg.DATASET.TEST
 
     directional_keypoint_generator = DirectionalKeypointsGenerator(
@@ -63,7 +66,7 @@ def make_dataloader(cfg, is_train=True, distributed=False):
 
     dataset = build_dataset(cfg, is_train)
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=16, collate_fn=collate_fn)
+        dataset, batch_size=8, collate_fn=collate_fn)
     return data_loader
 
 
