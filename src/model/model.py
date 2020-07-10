@@ -24,7 +24,7 @@ class CustomizedResnet(nn.Module):
             nn.ConvTranspose2d(55, 55, 2, stride=2),
             nn.ReLU(),
             nn.ConvTranspose2d(55, 55, 2, stride=2),
-            nn.ReLU(),
+            nn.Sigmoid()
         )
 
         if fix_encoder_params:
@@ -35,7 +35,7 @@ class CustomizedResnet(nn.Module):
         r"""
         Parmeter
         --------------------------
-        x has a dimension of [N,3,Height,Width]
+        x has a dimension of [N,channel,Height,Width]
         """
         x = self.encoder(x)
         return self.decoder(x)
@@ -61,15 +61,13 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
                 model.eval()   # Set model to evaluate mode
 
             running_loss = 0.0
-
+            iteration_loss = 0.0
             # Iterate over data.
-            for iteration, data in enumerate(dataloaders[phase]):
+            for i, data in enumerate(dataloaders[phase]):
                 images, joints, keypoints, heatmaps = data['images'], data[
                     'joints'], data['directional_keypoints'], data['heatmaps']
-                images = images.permute(0, 3, 1, 2).to(
-                    device, dtype=torch.float32)
+                images = images.to(device)
                 heatmaps = heatmaps.to(device)
-
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
@@ -78,17 +76,21 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(images)
                     loss = criterion(outputs, heatmaps)
-
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
-
+                # visulizor.save_batch_joints_and_directional_keypoints_plot(
+                #     images, joints, keypoints)
+        
                 # statistics
                 running_loss += loss.item()
-
-                if iteration % 100 == 99:    # print every 2000 mini-batches
-                    print('[%d, %5d] loss: %.3f' % (epoch + 1, iteration + 1, running_loss / 100))
+                iteration_loss += loss.item()
+                if i % 100 == 99:    # print every 100 mini-batches
+                    print('[%d, %5d] loss: %.3f' %
+                          (epoch + 1, i + 1, iteration_loss / 100))
+                    iteration_loss = 0.0
+                    visulizor.save_batch_heatmaps(images, outputs, batch_masks=None, file_name="{}-{}".format(epoch,i))
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
 

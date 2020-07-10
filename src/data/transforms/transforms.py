@@ -42,7 +42,7 @@ class Compose(object):
 
 class ToTensor(object):
     def __call__(self, image, mask, joints):
-        return F.to_tensor(image), F.to_tensor(mask.astype(int)), joints
+        return F.to_tensor(image), mask, joints
 
 
 class Normalize(object):
@@ -54,6 +54,23 @@ class Normalize(object):
         image = F.normalize(image, mean=self.mean, std=self.std)
         return image, mask, joints
 
+class Resize(object):
+    def __init__(self, input_size, output_size):
+        self.input_size = input_size
+        self.output_size = output_size
+    def __call__(self, image, mask, joints):
+        # scale factor to transform input size to output size
+        scale = self.output_size/self.input_size
+        seq = iaa.Sequential([iaa.Resize(self.input_size)])
+
+        for i, person in enumerate(joints):
+            kpt = KeypointsOnImage.from_xy_array(person[:, :2], image.shape)
+            kps_aug = seq.augment_keypoints(kpt)
+            joints[i,:,:2] = KeypointsOnImage.to_xy_array(kps_aug) * scale # scale the joint coordinates to output coordinate
+        
+        seq_mask = SegmentationMapsOnImage(mask, shape=mask.shape)
+        image_aug, mask_aug = seq(image=image, segmentation_maps=seq_mask)
+        return image_aug, mask_aug.get_arr(), joints
 
 class RandomHorizontalFlip(object):
     def __init__(self, flip_index, output_size, prob=0.5):

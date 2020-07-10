@@ -18,12 +18,6 @@ FLIP_CONFIG = {
 
 
 def build_transforms(cfg, is_train=True):
-    assert is_train is True, 'Please only use build_transforms for training.'
-    # assert isinstance(cfg.DATASET.OUTPUT_SIZE, (list, tuple)
-    #                   ), 'DATASET.OUTPUT_SIZE should be list or tuple'
-    
-    # if cfg.DATASET.WITH_CENTER:
-        # coco_flip_index.append(17)
     if 'coco' in cfg.DATASET.DATASET:
         dataset_name = 'COCO'
     else:
@@ -37,20 +31,29 @@ def build_transforms(cfg, is_train=True):
     max_rotation = cfg.DATASET.MAX_ROTATION
     max_translate = cfg.DATASET.MAX_TRANSLATE
 
-    transforms = T.Compose(
-        [
-            T.RandomAffineTransform(
-                input_size,
-                output_size,
-                max_rotation,
-                min_scale,
-                max_scale,
-                max_translate,
-            ),
-            T.RandomHorizontalFlip(coco_flip_index, output_size, prob=1),
-            # T.ToTensor(),
-            # T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ]
-    )
-
+    if is_train:
+        transforms = T.Compose(
+            [
+                T.RandomAffineTransform(
+                    input_size,
+                    output_size,
+                    max_rotation,
+                    min_scale,
+                    max_scale,
+                    max_translate,
+                ),
+                T.RandomHorizontalFlip(coco_flip_index, output_size, prob=1),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ]
+        )
+    else:
+        transforms = T.Compose(
+            [
+                T.Resize(input_size, output_size),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ]
+        )
+    
     return transforms

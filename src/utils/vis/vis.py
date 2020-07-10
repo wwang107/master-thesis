@@ -66,7 +66,8 @@ def save_batch_joint_and_keypoint(file_name, batch_image, batch_joints, batch_ke
     nrow = 8
     padding = 10
     grid = torchvision.utils.make_grid(batch_image, nrow=nrow, padding=padding)
-    ndarr = grid.permute(1, 2, 0).cpu().numpy()
+    ndarr = grid.permute(1, 2, 0).mul(255)\
+        .clamp(0, 255).cpu().numpy()
     ndarr = cv2.cvtColor(ndarr, cv2.COLOR_RGB2BGR)
 
     nmaps = batch_image.size(0)
@@ -108,8 +109,7 @@ def make_heatmaps(image, heatmaps):
     for j in range(num_joints):
         # add_joints(image_resized, joints[:, j, :])
         heatmap = heatmaps[j, :, :]
-        colored_heatmap = cv2.applyColorMap(
-            (heatmap*255).astype(np.uint8), cv2.COLORMAP_JET)
+        colored_heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
         image_fused = colored_heatmap*0.7 + image_resized*0.3
 
         width_begin = width * (j+1)
@@ -119,6 +119,7 @@ def make_heatmaps(image, heatmaps):
     image_grid[:, 0:width, :] = image_resized
 
     return image_grid
+
 
 def save_batch_maps(
         batch_image,
@@ -145,8 +146,12 @@ def save_batch_maps(
     )
 
     for i in range(batch_size):
-        image = batch_image[i].cpu().numpy()
-
+        image = batch_image[i].mul(255)\
+            .clamp(0, 255)\
+            .byte()\
+            .permute(1, 2, 0)\
+            .cpu().numpy()
+        
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         maps = batch_maps[i]
 
@@ -157,8 +162,8 @@ def save_batch_maps(
 
         grid_image[height_begin:height_end, :, :] = image_with_hms
         if batch_mask is not None:
-            mask = np.expand_dims(batch_mask[i].byte().cpu().numpy(), -1)
-            grid_image[height_begin:height_end, :map_width, :] = \
-                grid_image[height_begin:height_end, :map_width, :] * mask
+                mask = np.expand_dims(batch_mask[i].byte().cpu().numpy(), -1)
+                grid_image[height_begin:height_end, :map_width, :] = \
+                    grid_image[height_begin:height_end, :map_width, :] * mask
 
     cv2.imwrite(file_name, grid_image)

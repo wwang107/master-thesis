@@ -34,10 +34,7 @@ coco_skeleton = {
 
 
 def build_dataset(cfg, is_train):
-    if is_train:
-        transforms = build_transforms(cfg, is_train)
-    else:
-        transforms = None
+    transforms = build_transforms(cfg, is_train)
         
     dataset_name = cfg.DATASET.TRAIN if is_train else cfg.DATASET.TEST
 
@@ -66,7 +63,7 @@ def make_dataloader(cfg, is_train=True, distributed=False):
 
     dataset = build_dataset(cfg, is_train)
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=8, collate_fn=collate_fn)
+        dataset, num_workers=2, batch_size=8, collate_fn=collate_fn)
     return data_loader
 
 
