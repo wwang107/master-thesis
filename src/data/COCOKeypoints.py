@@ -34,8 +34,7 @@ class CocoKeypoints(CocoDataset):
 
     def __getitem__(self, idx):
         img, anno = super().__getitem__(idx)
-        mask = self.get_mask(anno, idx)
-
+        mask = np.array(self.get_mask(anno, idx), dtype=np.uint8)
         anno = [
             obj for obj in anno
             if obj['iscrowd'] == 0 or obj['num_keypoints'] > 0
@@ -52,7 +51,7 @@ class CocoKeypoints(CocoDataset):
             np.concatenate((joints, dir_keypoints), axis=1)
             )
 
-        return {'images': img, 'heatmaps': heatmap, 'joints': joints, 'directional_keypoints': dir_keypoints}
+        return {'images': img, 'masks':mask, 'heatmaps': heatmap, 'joints': joints, 'directional_keypoints': dir_keypoints}
 
     def get_mask(self, anno, idx):
         coco = self.coco
@@ -61,17 +60,17 @@ class CocoKeypoints(CocoDataset):
         m = np.zeros((img_info['height'], img_info['width']))
 
         for obj in anno:
-            if obj['iscrowd']:
-                rle = pycocotools.mask.frPyObjects(
-                    obj['segmentation'], img_info['height'], img_info['width'])
-                m += pycocotools.mask.decode(rle)
-            elif obj['num_keypoints'] == 0:
+            # if obj['iscrowd']:
+            #     rle = pycocotools.mask.frPyObjects(
+            #         obj['segmentation'], img_info['height'], img_info['width'])
+            #     m += pycocotools.mask.decode(rle)
+            if obj['num_keypoints'] > 0:
                 rles = pycocotools.mask.frPyObjects(
                     obj['segmentation'], img_info['height'], img_info['width'])
                 for rle in rles:
                     m += pycocotools.mask.decode(rle)
 
-        return m < 0.5
+        return m > 0.5
 
     def get_joints(self, anno):
         num_people = len(anno)

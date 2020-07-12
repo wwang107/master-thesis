@@ -13,18 +13,13 @@ class CustomizedResnet(nn.Module):
         resnet18 = models.resnet18(pretrained=use_pretrained)
         self.encoder = nn.Sequential(*list(resnet18.children())[:-2])
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(512, 256, 3, stride=1),
+            nn.Conv2d(512, 55, 1),
             nn.ReLU(),
-            nn.ConvTranspose2d(256, 128, 3, stride=1),
-            nn.ReLU(),
-            nn.ConvTranspose2d(128, 55, 3, stride=1),
-            nn.ReLU(),
-            nn.ConvTranspose2d(55, 55, 3, stride=1),
+            nn.ConvTranspose2d(55,55, 2, stride=2),
             nn.ReLU(),
             nn.ConvTranspose2d(55, 55, 2, stride=2),
             nn.ReLU(),
-            nn.ConvTranspose2d(55, 55, 2, stride=2),
-            nn.Sigmoid()
+            nn.ConvTranspose2d(55, 55, 2, stride=2)
         )
 
         if fix_encoder_params:
@@ -54,7 +49,8 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
         print('-' * 10)
 
         # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
+        # for phase in ['train', 'val']:
+        for phase in ['train']:
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
@@ -64,10 +60,13 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
             iteration_loss = 0.0
             # Iterate over data.
             for i, data in enumerate(dataloaders[phase]):
-                images, joints, keypoints, heatmaps = data['images'], data[
-                    'joints'], data['directional_keypoints'], data['heatmaps']
+                images, joints, keypoints, heatmaps, masks = data['images'], data[
+                    'joints'], data['directional_keypoints'], data['heatmaps'], data['masks']
+                # visulizor.save_batch_heatmaps(
+                #     images, heatmaps, batch_masks=masks, file_name="{}-{}".format(epoch, i))
                 images = images.to(device)
                 heatmaps = heatmaps.to(device)
+                masks = masks.to(device)
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
@@ -75,7 +74,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(images)
-                    loss = criterion(outputs, heatmaps)
+                    loss = criterion(outputs, heatmaps, masks)
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()
@@ -84,13 +83,14 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
                 #     images, joints, keypoints)
         
                 # statistics
+                
                 running_loss += loss.item()
                 iteration_loss += loss.item()
                 if i % 100 == 99:    # print every 100 mini-batches
                     print('[%d, %5d] loss: %.3f' %
                           (epoch + 1, i + 1, iteration_loss / 100))
                     iteration_loss = 0.0
-                    visulizor.save_batch_heatmaps(images, outputs, batch_masks=None, file_name="{}-{}".format(epoch,i))
+                    visulizor.save_batch_heatmaps(images, outputs, batch_masks=masks, file_name="{}-{}".format(epoch,i))
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
 

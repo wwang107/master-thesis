@@ -43,16 +43,14 @@ def build_transforms(cfg, is_train=True):
                     max_translate,
                 ),
                 T.RandomHorizontalFlip(coco_flip_index, output_size, prob=1),
-                T.ToTensor(),
-                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                T.ToTensor()
             ]
         )
     else:
         transforms = T.Compose(
             [
                 T.Resize(input_size, output_size),
-                T.ToTensor(),
-                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                T.ToTensor()
             ]
         )
     
