@@ -13,13 +13,13 @@ class CustomizedResnet(nn.Module):
         resnet18 = models.resnet18(pretrained=use_pretrained)
         self.encoder = nn.Sequential(*list(resnet18.children())[:-2])
         self.decoder = nn.Sequential(
-            nn.Conv2d(512, 55, 1),
+            nn.ConvTranspose2d(512,512, 2, stride=2),
             nn.ReLU(),
-            nn.ConvTranspose2d(55,55, 2, stride=2),
+            nn.ConvTranspose2d(512, 256, 2, stride=2),
             nn.ReLU(),
-            nn.ConvTranspose2d(55, 55, 2, stride=2),
+            nn.ConvTranspose2d(256, 128, 2, stride=2),
             nn.ReLU(),
-            nn.ConvTranspose2d(55, 55, 2, stride=2)
+            nn.Conv2d(128, 55, 1)
         )
 
         if fix_encoder_params:
