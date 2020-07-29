@@ -124,14 +124,14 @@ class RandomAffineTransform(object):
         center = (h/2+.5, w/2+.5)
         scale_height, scale_width = self.output_size/h, self.output_size/w
 
-        aug_scale = np.random.random() * (self.max_scale - self.min_scale) \
+        aug_scale = random.random() * (self.max_scale - self.min_scale) \
             + self.min_scale
-        aug_rot = (np.random.random() * 2 - 1) * self.max_rotation
+        aug_rot = (random.random() * 2 - 1) * self.max_rotation
         if self.max_translate > 0:
             aug_dxdy = (
-                np.random.randint(
+                random.randint(
                     -self.max_translate, self.max_translate),
-                np.random.randint(
+                random.randint(
                     -self.max_translate, self.max_translate))
 
         M = self._get_affine_matrix(center, aug_scale, aug_dxdy, aug_rot)
