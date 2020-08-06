@@ -13,7 +13,7 @@ class CustomizedResnet(nn.Module):
         resnet18 = models.resnet18(pretrained=use_pretrained)
         self.encoder = nn.Sequential(*list(resnet18.children())[:-2])
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(512,512, 2, stride=2),
+            nn.ConvTranspose2d(512, 512, 2, stride=2),
             nn.ReLU(),
             nn.ConvTranspose2d(512, 256, 2, stride=2),
             nn.ReLU(),
@@ -62,8 +62,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
             for i, data in enumerate(dataloaders[phase]):
                 images, joints, keypoints, heatmaps, masks = data['images'], data[
                     'joints'], data['directional_keypoints'], data['heatmaps'], data['masks']
-                # visulizor.save_batch_heatmaps(
-                #     images, heatmaps, batch_masks=masks, file_name="{}-{}".format(epoch, i))
                 images = images.to(device)
                 heatmaps = heatmaps.to(device)
                 masks = masks.to(device)
@@ -79,18 +77,20 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
-                # visulizor.save_batch_joints_and_directional_keypoints_plot(
-                #     images, joints, keypoints)
-        
+
                 # statistics
-                
                 running_loss += loss.item()
                 iteration_loss += loss.item()
                 if i % 100 == 99:    # print every 100 mini-batches
                     print('[%d, %5d] loss: %.3f' %
                           (epoch + 1, i + 1, iteration_loss / 100))
                     iteration_loss = 0.0
-                    visulizor.save_batch_heatmaps(images, outputs, batch_masks=masks, file_name="{}-{}".format(epoch,i))
+                    visulizor.save_batch_heatmaps(
+                        images, outputs, batch_masks=masks, file_name="{}-{}".format(epoch, i))
+                    visulizor.save_batch_heatmaps(
+                        images, heatmaps, batch_masks=masks, file_name="{}-{}-gt".format(epoch, i))
+                    visulizor.save_batch_joints_and_directional_keypoints_plot(
+                        images, joints, keypoints, file_name="{}-{}-joints".format(epoch, i))
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
 
