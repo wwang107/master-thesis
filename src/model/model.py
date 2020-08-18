@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 import torch.optim as optim
+from utils.vis.vis import save_batch_maps
+
 import time
 import copy
 
@@ -36,7 +38,7 @@ class CustomizedResnet(nn.Module):
         return self.decoder(x)
 
 
-def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None, num_epochs=25):
+def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None, writer=None, num_epochs=25):
     since = time.time()
 
     val_loss_history = []
@@ -49,15 +51,14 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
         print('-' * 10)
 
         # Each epoch has a training and validation phase
-        # for phase in ['train', 'val']:
-        for phase in ['train']:
+        for phase in ['train','val']:
+            valid_images = {'prediction': [], 'groundtruth': [], 'direction-keypoint':[]}
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
                 model.eval()   # Set model to evaluate mode
 
             running_loss = 0.0
-            iteration_loss = 0.0
             # Iterate over data.
             for i, data in enumerate(dataloaders[phase]):
                 images, joints, keypoints, heatmaps, masks = data['images'], data[
@@ -80,17 +81,19 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
 
                 # statistics
                 running_loss += loss.item()
-                iteration_loss += loss.item()
+
+                writer.add_scalar('train', loss.item(),
+                                  epoch*len(dataloaders[phase])+i)
                 if i % 100 == 99:    # print every 100 mini-batches
                     print('[%d, %5d] loss: %.3f' %
-                          (epoch + 1, i + 1, iteration_loss / 100))
-                    iteration_loss = 0.0
-                    visulizor.save_batch_heatmaps(
-                        images, outputs, batch_masks=masks, file_name="{}-{}".format(epoch, i))
-                    visulizor.save_batch_heatmaps(
-                        images, heatmaps, batch_masks=masks, file_name="{}-{}-gt".format(epoch, i))
-                    visulizor.save_batch_joints_and_directional_keypoints_plot(
-                        images, joints, keypoints, file_name="{}-{}-joints".format(epoch, i))
+                          (epoch, i, loss.item()))
+                    if phase == 'val':
+                        valid_images['prediction'].append(
+                            save_batch_maps(images, outputs, masks))
+                        valid_images['groundtruth'].append(
+                            save_batch_maps(images, heatmaps, masks))
+                        valid_images['direction-keypoint'].append(
+                            save_batch_maps(images, outputs, masks))
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
 
@@ -102,7 +105,10 @@ def train_model(model, dataloaders, criterion, optimizer, device, visulizor=None
                 lowest_loss = epoch_loss
                 best_model_wts = copy.deepcopy(model.state_dict())
             if phase == 'val':
-                val_loss_history.append(epoch_loss)
+                writer.add_scalar('valid', loss.item(),
+                                  (epoch+1)*len(dataloaders['train']))
+                writer.add_images('valid', valid_images,
+                                  (epoch+1)*len(dataloaders['train']))
 
         print()
 

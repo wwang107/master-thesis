@@ -125,7 +125,6 @@ def save_batch_maps(
         batch_image,
         batch_maps,
         batch_mask,
-        file_name,
         normalize=False
 ):
     if normalize:
@@ -165,5 +164,5 @@ def save_batch_maps(
                 mask = np.expand_dims(batch_mask[i].byte().cpu().numpy(), -1)
                 grid_image[height_begin:height_end, :map_width, :] = \
                     grid_image[height_begin:height_end, :map_width, :] * mask
-
-    cv2.imwrite(file_name, grid_image)
+    return cv2.cvtColor(grid_image, cv2.COLOR_BGR2RGB)
+    

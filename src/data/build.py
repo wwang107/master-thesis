@@ -63,7 +63,7 @@ def make_dataloader(cfg, is_train=True, distributed=False):
 
     dataset = build_dataset(cfg, is_train)
     data_loader = torch.utils.data.DataLoader(
-        dataset, num_workers=3, batch_size=8, collate_fn=collate_fn)
+        dataset, num_workers=1, batch_size=8, collate_fn=collate_fn)
     return data_loader
 
 

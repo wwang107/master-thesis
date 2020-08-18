@@ -13,7 +13,7 @@ class WeightedRegLoss(nn.Module):
             torch.eq(mask, 1), torch.tensor([fg_weight]).cuda(), torch.tensor([bg_weight]).cuda())
         loss = ((pred - gt)**2) * weight
 
-        loss = loss.mean()
+        loss = loss.mean() * 1000
         return loss
 
 class RegLoss(nn.Module):
