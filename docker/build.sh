@@ -1,0 +1,1 @@
+docker build -t weiwang/master-thesis:dev .

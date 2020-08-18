@@ -5,18 +5,18 @@ from __future__ import print_function
 import os
 
 from yacs.config import CfgNode as CN
+import yacs
 
 _C = CN()
 
 # DATASET related params
 _C.DATASET = CN()
-_C.DATASET.ROOT = '/media/weiwang/Elements/coco'
+_C.DATASET.ROOT = './dataset/coco'
 _C.DATASET.DATASET = 'coco_kpt'
 _C.DATASET.DATASET_TEST = 'coco'
 _C.DATASET.NUM_JOINTS = 17
 _C.DATASET.MAX_NUM_PEOPLE = 30
-# _C.DATASET.TRAIN = 'train2017'
-_C.DATASET.TRAIN = 'val2017'
+_C.DATASET.TRAIN = 'train2017'
 _C.DATASET.TEST = 'val2017'
 _C.DATASET.DATA_FORMAT = 'jpg'
 _C.DATASET.INPUT_SIZE = 256
