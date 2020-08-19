@@ -1,44 +1,37 @@
 #FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
-ARG PYTORCH="1.4"
-ARG CUDA="10.1"
+ARG PYTORCH="1.4.0"
+ARG TORCHVISION="0.5.0"
+ARG CUDA="9.2"
 ARG CUDNN="7"
 
-FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
+FROM nvidia/cuda:${CUDA}-cudnn${CUDNN}-devel-ubuntu16.04
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV PATH /opt/miniconda3/bin:$PATH
-ENV CPLUS_INCLUDE_PATH /opt/miniconda3/include
-
-RUN echo "hey"
-RUN apt-get update
-RUN apt-get install -y apt-file
-RUN apt-get update
-RUN apt-get install -y build-essential \
-    checkinstall \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     cmake \
-    pkg-config \
-    yasm \
     git \
-    gfortran \
-    libjpeg8-dev libpng-dev \
-    libtiff-dev \
-    libavcodec-dev libavformat-dev libswscale-dev libdc1394-22-dev \
-    libxine2-dev libv4l-dev \
-    liblmdb-dev libleveldb-dev libsnappy-dev \
-    mesa-utils and libgl1-mesa-glx x11-apps eog \
-    vim tmux curl
+    curl \
+    vim \
+    ca-certificates \
+    libjpeg-dev \
+    libpng-dev &&\
+    rm -rf /var/lib/apt/lists/*
 
-ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0+PTX"
-ENV TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
-ENV CMAKE_PREFIX_PATH="$(dirname $(which conda))/../"
 
-RUN apt-get update && apt-get install -y libglib2.0-0 libsm6 libxrender-dev libxext6 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
+    chmod +x ~/miniconda.sh && \
+    ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    /opt/conda/bin/conda install -y python=$PYTHON_VERSION numpy pyyaml scipy ipython mkl mkl-include cython typing && \
+    /opt/conda/bin/conda install -y -c pytorch magma-cuda90 && \
+    /opt/conda/bin/conda clean -ya
+ENV PATH /opt/conda/bin:$PATH
+# This must be done before pip so that requirements.txt is available
 
 RUN pip install Cython
 RUN pip install "git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI"
 
+RUN conda install pytorch==${PYTORCH} torchvision==${TORCHVISION} cudatoolkit=${CUDA} -c pytorch
 RUN conda install -c conda-forge opencv
 RUN conda install -c conda-forge json_tricks
 
