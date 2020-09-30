@@ -20,16 +20,16 @@ _C.DATASET.TRAIN = 'train2017'
 _C.DATASET.TEST = 'val2017'
 _C.DATASET.DATA_FORMAT = 'jpg'
 _C.DATASET.INPUT_SIZE = 256
-_C.DATASET.OUTPUT_SIZE = 64
+_C.DATASET.OUTPUT_SIZE = (256, 256)
 
 # DATASET augmentation related params
-_C.DATASET.MIN_SCALE=0.75
-_C.DATASET.MAX_SCALE = 1.2
-_C.DATASET.MAX_TRANSLATE = 50
-_C.DATASET.MAX_ROTATION =30
+_C.DATASET.MIN_SCALE=1.0
+_C.DATASET.MAX_SCALE = 1.0
+_C.DATASET.MAX_TRANSLATE = 0
+_C.DATASET.MAX_ROTATION = 0
 
 # heatmap generator (default is OUTPUT_SIZE/64)
-_C.DATASET.SIGMA = -1
+_C.DATASET.SIGMA =  -1
 
 def get_cfg_defaults():
   """Get a yacs CfgNode object with default values for my_project."""

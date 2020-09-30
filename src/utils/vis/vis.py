@@ -166,3 +166,148 @@ def save_batch_maps(
                     grid_image[height_begin:height_end, :map_width, :] * mask
     return cv2.cvtColor(grid_image, cv2.COLOR_BGR2RGB)
     
+def save_batch_sequence_image_with_joint(batch_image,
+                                         batch_joints,
+                                         num_person,
+                                         file_name,
+                                         padding = 2
+                                        ):
+    '''
+    batch_image: [batch_size, channel, height, width, view, frames]
+    batch_joints: [batch_size, num_person, num_joints, 3, view, frames],
+    num_person: [batch_size]
+    }
+    '''
+    n_batch = batch_image.size(0)
+    n_frame = batch_image.size(5)
+    n_view = batch_image.size(4)
+    assert n_view == batch_joints.size(4)
+
+    height = int(batch_image.size(2) + padding)
+    width = int(batch_image.size(3) + padding)
+    for i in range(n_batch):  
+        grid_image = np.zeros(
+            (n_frame * height,  n_view * width, 3),
+            dtype=np.uint8)
+        image = batch_image[i].permute((1,2,0,3,4)) # swap the color channel to the first dimension
+        for x in range(n_view):
+            for y in range(n_frame):
+                width_begin = x*width
+                width_end = (x+1)*width-padding
+                height_begin = y*height
+                height_end = (y+1)*height-padding
+                grid_image[height_begin:height_end, width_begin:width_end,:] = image[:,:,:,x,y]
+                for p in range(num_person[i]):
+                    joints = batch_joints[i,p]
+
+                    for joint in joints[:,:,x,y]:
+                        joint[0] = x * width + padding + joint[0]
+                        joint[1] = y * height + padding + joint[1]
+                        cv2.circle(grid_image, (int(joint[0]), int(joint[1])), 2,
+                                    [0, 255, 255], 2)
+        cv2.imwrite('{}_frame_{}.png'.format(file_name,i), grid_image)
+                
+
+
+    
+
+def save_batch_image_with_joints_multi(batch_image,
+                                       batch_joints,
+                                       batch_joints_vis,
+                                       num_person,
+                                       file_name,
+                                       nrow=8,
+                                       padding=2):
+    '''
+    batch_image: [batch_size, channel, height, width, view, frames]
+    batch_joints: [batch_size, num_person, num_joints, 3, view, frames],
+    batch_joints_vis: [batch_size, num_person, num_joints, 1],
+    num_person: [batch_size]
+    }
+    '''
+    batch_image = batch_image.flip(1)
+    grid = torchvision.utils.make_grid(batch_image, nrow, padding, True)
+    ndarr = grid.mul(255).clamp(0, 255).byte().permute(1, 2, 0).cpu().numpy()
+    ndarr = ndarr.copy()
+
+    nmaps = batch_image.size(0)
+    xmaps = min(nrow, nmaps)
+    ymaps = int(math.ceil(float(nmaps) / xmaps))
+    height = int(batch_image.size(2) + padding)
+    width = int(batch_image.size(3) + padding)
+    k = 0
+    for y in range(ymaps):
+        for x in range(xmaps):
+            if k >= nmaps:
+                break
+            for n in range(num_person[k]):
+                joints = batch_joints[k, n]
+                joints_vis = batch_joints_vis[k, n]
+
+                for joint, joint_vis in zip(joints, joints_vis):
+                    joint[0] = x * width + padding + joint[0]
+                    joint[1] = y * height + padding + joint[1]
+                    if joint_vis[0]:
+                        cv2.circle(ndarr, (int(joint[0]), int(joint[1])), 2,
+                                   [0, 255, 255], 2)
+            k = k + 1
+    cv2.imwrite(file_name, ndarr)
+
+
+def save_batch_heatmaps_multi(batch_image, batch_heatmaps, file_name, normalize=True):
+    '''
+    batch_image: [batch_size, channel, height, width]
+    batch_heatmaps: ['batch_size, num_joints, height, width]
+    file_name: saved file name
+    '''
+    if normalize:
+        batch_image = batch_image.clone()
+        min = float(batch_image.min())
+        max = float(batch_image.max())
+
+        batch_image.add_(-min).div_(max - min + 1e-5)
+    batch_image = batch_image.flip(1)
+
+    batch_size = batch_heatmaps.size(0)
+    num_joints = batch_heatmaps.size(1)
+    heatmap_height = batch_heatmaps.size(2)
+    heatmap_width = batch_heatmaps.size(3)
+    view_num = batch_heatmaps.size(4)
+    frame_num = batch_heatmaps.size(5)
+
+    grid_image = np.zeros(
+        (batch_size * heatmap_height, (num_joints + 1) * heatmap_width, 3),
+        dtype=np.uint8)
+
+    for i in range(batch_size):
+        image = batch_image[i].mul(255)\
+                              .clamp(0, 255)\
+                              .byte()\
+                              .permute(1, 2, 0, 3, 4)\
+                              .cpu().numpy()
+        heatmaps = batch_heatmaps[i].mul(255)\
+                                    .clamp(0, 255)\
+                                    .byte()\
+                                    .cpu().numpy()
+
+        resized_image = cv2.resize(image[:,:,:,2,0],
+                                   (int(heatmap_width), int(heatmap_height)))
+
+        height_begin = heatmap_height * i
+        height_end = heatmap_height * (i + 1)
+        for j in range(num_joints):
+            heatmap = heatmaps[j, :, :,2,0]
+            colored_heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+            masked_image = colored_heatmap * 0.7 + resized_image * 0.3
+
+            width_begin = heatmap_width * (j + 1)
+            width_end = heatmap_width * (j + 2)
+            grid_image[height_begin:height_end, width_begin:width_end, :] = \
+                masked_image
+            # grid_image[height_begin:height_end, width_begin:width_end, :] = \
+            #     colored_heatmap*0.7 + resized_image*0.3
+
+        grid_image[height_begin:height_end, 0:heatmap_width, :] = resized_image
+
+    cv2.imwrite(file_name, grid_image)
+    print('write')

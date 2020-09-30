@@ -83,6 +83,26 @@ class RandomHorizontalFlip(object):
 
         return image, mask, joints
 
+class ResizeJointToSqaure(object):
+    """
+    To scale the 2d joint that lies in non-square dimension into square one
+    """
+    def __init__(self, original_dim, output_dim):
+        """
+        joint2d: np.array [[joint_xCoordinate],[joint_xCoordinate]]
+        orginal_dim: tuple (width, height) tuple that states the original width and height
+        output_dim: tuple (width, height) tuple that state the transformed width and height
+        """
+        self.original_dim = original_dim
+        self.output_dim = output_dim
+
+    def __call__(self, joint2d):
+        scale_width = self.output_dim[0] / self.original_dim[0]
+        scale_height = self.output_dim[1] / self.original_dim[1]
+        for i in joint2d.shape[0]:
+            joint2d[i, 0, :] = joint2d[i, 0, :]*scale_width
+            joint2d[i, 1, :] = joint2d[i, 1, :]*scale_height
+        return joint2d
 
 class RandomAffineTransform(object):
     def __init__(self,
@@ -127,6 +147,7 @@ class RandomAffineTransform(object):
         aug_scale = random.random() * (self.max_scale - self.min_scale) \
             + self.min_scale
         aug_rot = (random.random() * 2 - 1) * self.max_rotation
+        aug_dxdy =(0,0)
         if self.max_translate > 0:
             aug_dxdy = (
                 random.randint(
@@ -138,10 +159,11 @@ class RandomAffineTransform(object):
         image = cv2.resize(
             cv2.warpAffine(image, M[:2, :], (w, h)),
             (self.input_size, self.input_size))
-        mask = cv2.resize(
-            cv2.warpAffine(mask, M[:2, :], (w, h)),
-            (self.output_size, self.output_size))
-        mask = mask.astype(np.float32)
+        if mask is not None:
+            mask = cv2.resize(
+                cv2.warpAffine(mask, M[:2, :], (w, h)),
+                (self.output_size, self.output_size))
+            mask = mask.astype(np.float32)
         joints = self._get_affined_joints(joints, M)
         joints[:, :, 0] = joints[:, :, 0] * scale_width
         joints[:, :, 1] = joints[:, :, 1] * scale_height

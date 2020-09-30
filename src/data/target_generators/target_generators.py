@@ -33,7 +33,7 @@ class HeatmapGenerator():
         self.output_res = output_res
         self.num_joints = num_joints
         if sigma < 0:
-            sigma = self.output_res/64
+            sigma = min(self.output_res[0], self.output_res[1])/64
         self.sigma = sigma
         size = 6*sigma + 3
         x = np.arange(0, size, 1, float)
@@ -42,7 +42,7 @@ class HeatmapGenerator():
         self.g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
 
     def __call__(self, joints):
-        hms = np.zeros((self.num_joints, self.output_res, self.output_res),
+        hms = np.zeros((self.num_joints, self.output_res[1], self.output_res[0]),
                        dtype=np.float32)
         sigma = self.sigma
         for p in joints:
@@ -50,7 +50,7 @@ class HeatmapGenerator():
                 if pt[2] > 0:
                     x, y = int(pt[0]), int(pt[1])
                     if x < 0 or y < 0 or \
-                       x >= self.output_res or y >= self.output_res:
+                       x >= self.output_res[0] or y >= self.output_res[1]:
                         continue
 
                     ul = int(np.round(x - 3 * sigma - 1)
@@ -58,11 +58,11 @@ class HeatmapGenerator():
                     br = int(np.round(x + 3 * sigma + 2)
                              ), int(np.round(y + 3 * sigma + 2))
 
-                    c, d = max(0, -ul[0]), min(br[0], self.output_res) - ul[0]
-                    a, b = max(0, -ul[1]), min(br[1], self.output_res) - ul[1]
+                    c, d = max(0, -ul[0]), min(br[0], self.output_res[0]) - ul[0]
+                    a, b = max(0, -ul[1]), min(br[1], self.output_res[1]) - ul[1]
 
-                    cc, dd = max(0, ul[0]), min(br[0], self.output_res)
-                    aa, bb = max(0, ul[1]), min(br[1], self.output_res)
+                    cc, dd = max(0, ul[0]), min(br[0], self.output_res[0])
+                    aa, bb = max(0, ul[1]), min(br[1], self.output_res[1])
                     hms[idx, aa:bb, cc:dd] = np.maximum(
                         hms[idx, aa:bb, cc:dd], self.g[a:b, c:d])
         return hms
