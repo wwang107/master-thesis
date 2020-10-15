@@ -208,6 +208,18 @@ def save_batch_sequence_image_with_joint(batch_image,
         cv2.imwrite('{}_frame_{}.png'.format(file_name,i), grid_image)
                 
 
+def save_batch_multi_view_with_heatmap(batch_image, batch_heatmaps, file_name, normalize=True):
+    num_view = batch_heatmaps.size(4)
+    multi_view_images = []
+    for k in range(num_view):
+        file_name_view = file_name + '_{}'.format(k)
+        multi_view_images.append(
+            save_batch_heatmaps_multi(
+                batch_image=batch_image[:, :, :, :, k], 
+                batch_heatmaps=batch_heatmaps[:, :, :, :, k], 
+                file_name=file_name_view, normalize=normalize)
+                )
+    return multi_view_images
 
     
 
@@ -254,6 +266,7 @@ def save_batch_image_with_joints_multi(batch_image,
     cv2.imwrite(file_name, ndarr)
 
 
+
 def save_batch_heatmaps_multi(batch_image, batch_heatmaps, file_name, normalize=True):
     '''
     batch_image: [batch_size, channel, height, width]
@@ -261,19 +274,17 @@ def save_batch_heatmaps_multi(batch_image, batch_heatmaps, file_name, normalize=
     file_name: saved file name
     '''
     if normalize:
-        batch_image = batch_image.clone()
+        batch_image = batch_image.clone().float()
         min = float(batch_image.min())
         max = float(batch_image.max())
 
         batch_image.add_(-min).div_(max - min + 1e-5)
-    batch_image = batch_image.flip(1)
-
+    
+    
     batch_size = batch_heatmaps.size(0)
     num_joints = batch_heatmaps.size(1)
     heatmap_height = batch_heatmaps.size(2)
     heatmap_width = batch_heatmaps.size(3)
-    view_num = batch_heatmaps.size(4)
-    frame_num = batch_heatmaps.size(5)
 
     grid_image = np.zeros(
         (batch_size * heatmap_height, (num_joints + 1) * heatmap_width, 3),
@@ -282,21 +293,21 @@ def save_batch_heatmaps_multi(batch_image, batch_heatmaps, file_name, normalize=
     for i in range(batch_size):
         image = batch_image[i].mul(255)\
                               .clamp(0, 255)\
+                              .permute(1,2,0)\
                               .byte()\
-                              .permute(1, 2, 0, 3, 4)\
                               .cpu().numpy()
         heatmaps = batch_heatmaps[i].mul(255)\
                                     .clamp(0, 255)\
                                     .byte()\
                                     .cpu().numpy()
 
-        resized_image = cv2.resize(image[:,:,:,2,0],
+        resized_image = cv2.resize(image,
                                    (int(heatmap_width), int(heatmap_height)))
 
         height_begin = heatmap_height * i
         height_end = heatmap_height * (i + 1)
         for j in range(num_joints):
-            heatmap = heatmaps[j, :, :,2,0]
+            heatmap = heatmaps[j, :, :]
             colored_heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
             masked_image = colored_heatmap * 0.7 + resized_image * 0.3
 
@@ -308,6 +319,4 @@ def save_batch_heatmaps_multi(batch_image, batch_heatmaps, file_name, normalize=
             #     colored_heatmap*0.7 + resized_image*0.3
 
         grid_image[height_begin:height_end, 0:heatmap_width, :] = resized_image
-
-    cv2.imwrite(file_name, grid_image)
-    print('write')
+    return grid_image    

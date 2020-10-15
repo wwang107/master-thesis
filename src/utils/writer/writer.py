@@ -19,8 +19,7 @@ class TensorBoardWriter:
             self.trainWriter.add_scalar('loss', loss, step)
         elif mode == 'valid':
             self.validWriter.add_scalar('loss', loss, step)
-
-    
+	
     def add_images(self, mode, images, step):
         if mode == 'train':
             writer = self.trainWriter

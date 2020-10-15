@@ -16,7 +16,7 @@ class CocoKeypoints(CocoDataset):
                  direction_keypoints_generator=None,
                  heatmap_generator=None,
                  transforms=None):
-        super().__init__(cfg.DATASET.ROOT,
+        super().__init__(cfg.DATASET.COCOROOT,
                          dataset_name,
                          cfg.DATASET.DATA_FORMAT)
 

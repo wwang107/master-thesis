@@ -30,3 +30,33 @@ class RegLoss(nn.Module):
 
         loss = loss.mean()
         return loss
+
+
+class JointsMSELoss(nn.Module):
+    def __init__(self, use_target_weight):
+        super(JointsMSELoss, self).__init__()
+        self.criterion = nn.MSELoss(reduction='mean')
+        self.use_target_weight = use_target_weight
+
+    def forward(self, output, target):
+        batch_size = output.size(0)
+        num_joints = output.size(1)
+        heatmaps_pred = output.reshape(
+            (batch_size, num_joints, -1))
+        heatmaps_gt = target.reshape(
+            (batch_size, num_joints, -1))
+        weights = torch.where(torch.gt(heatmaps_gt, 0.1), torch.tensor(
+            [1.0]).cuda(), torch.tensor([0.1]).cuda())
+        
+        loss = 0
+        for idx in range(num_joints):
+            heatmap_pred = heatmaps_pred[:, idx]
+            heatmap_gt = heatmaps_gt[:,idx]
+            weight = weights[:,idx]
+            if self.use_target_weight:
+                loss += self.criterion(heatmap_pred.mul(weight),
+                                       heatmap_gt.mul(weight))
+            else:
+                loss += self.criterion(heatmap_pred, heatmap_gt)
+
+        return loss

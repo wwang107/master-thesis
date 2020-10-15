@@ -1,10 +1,3 @@
-# ------------------------------------------------------------------------------
-# Copyright (c) Microsoft
-# Licensed under the MIT License.
-# Written by Bin Xiao (leoxiaobin@gmail.com)
-# Modified by Bowen Cheng (bcheng9@illinois.edu)
-# ------------------------------------------------------------------------------
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -13,7 +6,8 @@ import torch.utils.data
 
 from .COCODataset import CocoDataset as coco
 from .COCOKeypoints import CocoKeypoints as coco_kpt
-from .transforms import build_transforms
+from .PanopticDataset import PanopticDataset as cmu_kpt
+from .transforms import build_transforms, transforms
 
 from .target_generators import HeatmapGenerator
 from .target_generators import DirectionalKeypointsGenerator
@@ -58,12 +52,43 @@ def build_dataset(cfg, is_train):
 
     return dataset
 
+def build_CMU_dataset(cfg, is_train):
+    directional_keypoint_generator = DirectionalKeypointsGenerator(
+        cfg.DATASET.NUM_JOINTS,
+        coco_skeleton['skeleton'])
 
-def make_dataloader(cfg, is_train=True, distributed=False):
+    num_pair = len(coco_skeleton['skeleton'])
+    heatmap_generator = HeatmapGenerator(
+        cfg.DATASET.OUTPUT_SIZE,
+        cfg.DATASET.NUM_JOINTS + num_pair*2,
+        cfg.DATASET.SIGMA)
+    dataset = cmu_kpt(
+        cfg,
+        heatmap_generator,
+        directional_keypoint_generator,
+        is_train
+        )
 
-    dataset = build_dataset(cfg, is_train)
-    data_loader = torch.utils.data.DataLoader(
-        dataset, num_workers=1, batch_size=8, collate_fn=collate_fn)
+    return dataset
+
+
+def make_dataloader(cfg, dataset_name='coco', is_train=True):
+    if dataset_name is 'coco':
+        dataset = build_dataset(cfg, is_train)
+        data_loader = torch.utils.data.DataLoader(
+            dataset, num_workers=2, batch_size=8, collate_fn=collate_fn)
+    else:
+        dataset = build_CMU_dataset(cfg, is_train)
+        is_shuffle = True if is_train else False
+        num_wokers = cfg.DATASET.CMU_NUM_WORKERS
+        batch_size = cfg.DATASET.CMU_BATCH_SIZE if is_train else 1
+        data_loader = torch.utils.data.DataLoader(
+            dataset, 
+            num_workers=num_wokers,
+            batch_size=batch_size,
+            shuffle=is_shuffle,
+            collate_fn=None)
+    
     return data_loader
 
 

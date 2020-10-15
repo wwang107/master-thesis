@@ -58,10 +58,10 @@ class Resize(object):
 
     def __call__(self, image, mask, joints):
         h, w = image.shape[:2]
-        scale_height, scale_width = self.output_size/h, self.output_size/w
+        scale_height, scale_width = self.output_size[1]/h, self.output_size[0]/w
 
         image = cv2.resize(image,(self.input_size, self.input_size))
-        mask = cv2.resize(mask, (self.output_size, self.output_size))
+        mask = cv2.resize(mask, (self.output_size[0], self.output_size[1]))
         joints[:, :, 0] = joints[:, :, 0] * scale_width
         joints[:, :, 1] = joints[:, :, 1] * scale_height
 
@@ -79,7 +79,7 @@ class RandomHorizontalFlip(object):
             image = image[:, ::-1] - np.zeros_like(image)
             mask = mask[:, ::-1] - np.zeros_like(mask)
             joints = joints[:, self.flip_index]
-            joints[:, :, 0] = self.output_size - joints[:, :, 0] - 1
+            joints[:, :, 0] = self.output_size[0] - joints[:, :, 0] - 1
 
         return image, mask, joints
 
@@ -142,7 +142,7 @@ class RandomAffineTransform(object):
     def __call__(self, image, mask, joints):
         h, w = image.shape[:2]
         center = (h/2+.5, w/2+.5)
-        scale_height, scale_width = self.output_size/h, self.output_size/w
+        scale_height, scale_width = self.output_size[1]/h, self.output_size[0]/w
 
         aug_scale = random.random() * (self.max_scale - self.min_scale) \
             + self.min_scale
@@ -162,7 +162,7 @@ class RandomAffineTransform(object):
         if mask is not None:
             mask = cv2.resize(
                 cv2.warpAffine(mask, M[:2, :], (w, h)),
-                (self.output_size, self.output_size))
+                (self.output_size[0], self.output_size[1]))
             mask = mask.astype(np.float32)
         joints = self._get_affined_joints(joints, M)
         joints[:, :, 0] = joints[:, :, 0] * scale_width
