@@ -1,5 +1,6 @@
 .vscode
 
+pretrain/
 dataset/
 backup/
 runs/

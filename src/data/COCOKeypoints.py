@@ -8,17 +8,18 @@ import torch
 import pycocotools
 from .COCODataset import CocoDataset
 
+
 class CocoKeypoints(CocoDataset):
-    def __init__(self,
-                 cfg,
-                 dataset_name,
-                 remove_images_without_annotations,
-                 direction_keypoints_generator=None,
-                 heatmap_generator=None,
-                 transforms=None):
-        super().__init__(cfg.DATASET.COCOROOT,
-                         dataset_name,
-                         cfg.DATASET.DATA_FORMAT)
+    def __init__(
+        self,
+        cfg,
+        dataset_name,
+        remove_images_without_annotations,
+        direction_keypoints_generator=None,
+        heatmap_generator=None,
+        transforms=None,
+    ):
+        super().__init__(cfg.DATASET.COCOROOT, dataset_name, cfg.DATASET.DATA_FORMAT)
 
         self.num_joints = cfg.DATASET.NUM_JOINTS
 
@@ -35,38 +36,40 @@ class CocoKeypoints(CocoDataset):
     def __getitem__(self, idx):
         img, anno = super().__getitem__(idx)
         mask = np.array(self.get_mask(anno, idx), dtype=np.uint8)
-        anno = [
-            obj for obj in anno
-            if obj['iscrowd'] == 0 or obj['num_keypoints'] > 0
-        ]
+        anno = [obj for obj in anno if obj["iscrowd"] == 0 or obj["num_keypoints"] > 0]
 
         joints = self.get_joints(anno)
 
         if self.transforms:
-            img, mask, joints = self.transforms(
-                img, mask, joints
-            )
-        dir_keypoints = self.direction_keypoints_generator(joints, 0.1)        
+            img, mask, joints = self.transforms(img, mask, joints)
+        dir_keypoints = self.direction_keypoints_generator(joints, 0.1)
         heatmap = self.heatmap_generator(
             np.concatenate((joints, dir_keypoints), axis=1)
-            )
+        )
 
-        return {'images': img, 'masks':mask, 'heatmaps': heatmap, 'joints': joints, 'directional_keypoints': dir_keypoints}
+        return {
+            "images": img,
+            "masks": mask,
+            "heatmaps": heatmap,
+            "joints": joints,
+            "directional_keypoints": dir_keypoints,
+        }
 
     def get_mask(self, anno, idx):
         coco = self.coco
         img_info = coco.loadImgs(self.ids[idx])[0]
 
-        m = np.zeros((img_info['height'], img_info['width']))
+        m = np.zeros((img_info["height"], img_info["width"]))
 
         for obj in anno:
             # if obj['iscrowd']:
             #     rle = pycocotools.mask.frPyObjects(
             #         obj['segmentation'], img_info['height'], img_info['width'])
             #     m += pycocotools.mask.decode(rle)
-            if obj['num_keypoints'] > 0:
+            if obj["num_keypoints"] > 0:
                 rles = pycocotools.mask.frPyObjects(
-                    obj['segmentation'], img_info['height'], img_info['width'])
+                    obj["segmentation"], img_info["height"], img_info["width"]
+                )
                 for rle in rles:
                     m += pycocotools.mask.decode(rle)
 
@@ -78,7 +81,8 @@ class CocoKeypoints(CocoDataset):
         joints = np.zeros((num_people, self.num_joints, 3))
 
         for i, obj in enumerate(anno):
-            joints[i, :self.num_joints, :3] = \
-                np.array(obj['keypoints']).reshape([-1, 3])
+            joints[i, : self.num_joints, :3] = np.array(obj["keypoints"]).reshape(
+                [-1, 3]
+            )
 
         return joints
