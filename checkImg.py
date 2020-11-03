@@ -4,10 +4,10 @@ from tqdm import tqdm
 
 IMG_FOLDERS = [
     # '160224_haggling1/hdImgs',
-    #'160226_haggling1/hdImgs', 
-    '170407_haggling_a1/hdImgs'
+    '160226_haggling1/hdImgs', 
+    # '170407_haggling_a1/hdImgs'
     ]
-ROOT_DIR = '/media/weiwang/Elements/panoptic'
+ROOT_DIR = '/media/wei/Elements1/panoptic'
 
 if __name__ == "__main__":
     broken_imgs = []

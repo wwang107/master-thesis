@@ -1,6 +1,5 @@
 import random
 import json
-from typing import Sequence
 import torch
 import cv2
 import numpy as np
@@ -54,7 +53,7 @@ Panoptic Joint Label:
 WIDTH = 1920
 HEIGHT = 1080
 TRAINING_CAMERA_ID = [(0, i) for i in range(0, 31) if i != 21]  # missing view 21
-VALIDATION_CAMERA_ID = [(0, 12), (0, 6), (0, 13), (0, 3), (0, 1)]
+VALIDATION_CAMERA_ID = [(0,12),(0, 6),(0, 3), (0, 1), (0,13), (0,5)]
 HD_IMG = "hdImgs"
 BODY_EDGES = (
     np.array(
@@ -89,7 +88,11 @@ class PanopticDataset(Dataset):
     """
 
     def __init__(
-        self, cfg, heatmap_generator=None, keypoint_generator=None, is_train=True
+        self, 
+        cfg, 
+        heatmap_generator=None, 
+        keypoint_generator=None,
+        is_train=True,
     ):
         super().__init__()
         self.cfg = cfg
@@ -137,9 +140,9 @@ class PanopticDataset(Dataset):
             )
 
             start_frame = (
-                self.num_frames_in_subseq if is_train else len(skel_json_paths) // 2
+                self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
             )
-            end_frame = len(skel_json_paths) if is_train else start_frame + 200
+            end_frame = len(skel_json_paths) if is_train else start_frame + 3600
             step = self.num_frames_in_subseq if is_train else 1
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):
@@ -192,7 +195,7 @@ class PanopticDataset(Dataset):
         camera_ids = (
             random.sample(TRAINING_CAMERA_ID, self.num_view)
             if self.is_train
-            else VALIDATION_CAMERA_ID
+            else VALIDATION_CAMERA_ID[:self.num_view]
         )
 
         hm = np.zeros(
@@ -270,7 +273,12 @@ class PanopticDataset(Dataset):
                 heatmap = self.heatmap_generator(
                     keypoint2d[0:num_person[f], :, :, k, f]
                 )
-
+                a = cv2.imread(str(subseq_hdImg[cam_id][f]))
+                try:
+                    if a.shape[0] < 0 or a.shape[1] < 0:
+                        print(str(subseq_hdImg[cam_id][f]))
+                except AttributeError:
+                    print(str(subseq_hdImg[cam_id][f]))
                 img[:, :, :, k, f] = cv2.warpAffine(
                     cv2.imread(str(subseq_hdImg[cam_id][f])),
                     trans,
@@ -278,11 +286,14 @@ class PanopticDataset(Dataset):
                     flags=cv2.INTER_LINEAR,
                 )
                 hm[:, :, :, k, f] = heatmap
+        
+        keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
+        img = img.transpose(2, 0, 1, 3, 4)
         return {
             "heatmap": torch.from_numpy(hm),
             "img": torch.from_numpy(img),
             "keypoint2d": keypoint2d,
-            "num_person": num_person,
+            "num_person": num_person
         }
 
     def readSkeletonFromPath(self, path):
@@ -316,3 +327,7 @@ class PanopticDataset(Dataset):
             camera["distCoef"],
         )
         return keypoints2d
+    
+    @staticmethod
+    def evaluation(gt, pred):
+        pass

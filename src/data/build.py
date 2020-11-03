@@ -73,7 +73,7 @@ def build_CMU_dataset(cfg, is_train):
 
 
 def make_dataloader(cfg, dataset_name='coco', is_train=True):
-    if dataset_name is 'coco':
+    if dataset_name == 'coco':
         dataset = build_dataset(cfg, is_train)
         data_loader = torch.utils.data.DataLoader(
             dataset, num_workers=2, batch_size=8, collate_fn=collate_fn)
@@ -81,7 +81,7 @@ def make_dataloader(cfg, dataset_name='coco', is_train=True):
         dataset = build_CMU_dataset(cfg, is_train)
         is_shuffle = True if is_train else False
         num_wokers = cfg.DATASET.CMU_NUM_WORKERS
-        batch_size = cfg.DATASET.CMU_BATCH_SIZE if is_train else 1
+        batch_size = cfg.DATASET.CMU_BATCH_SIZE
         data_loader = torch.utils.data.DataLoader(
             dataset, 
             num_workers=num_wokers,

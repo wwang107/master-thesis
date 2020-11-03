@@ -1,8 +1,7 @@
 import torch
 
-def load_model_state_dict(path):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    checkpoint = torch.load(path, device)
+def load_model_state_dict(path, device):
+    checkpoint = torch.load(path, map_location=device)
     return checkpoint['model_state_dict']
 
 
@@ -17,3 +16,5 @@ def load_checkpoint(model, optimizer, path):
         for k, v in state.items():
             if isinstance(v, torch.Tensor):
                 state[k] = v.cuda()
+    
+    return epoch, loss
