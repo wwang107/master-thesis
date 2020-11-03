@@ -44,21 +44,21 @@ class AggregateModel(pl.LightningModule):
         with torch.set_grad_enabled(self.is_train_restnet):
             for k in range(self.num_camera_view):
                 for f in range(self.num_frame):
-                    batch_heatmaps[:,:,:,:,k,f] = self.resnet(x[:,:,:,:,k,f])
+                    batch_heatmaps[:,:,:,:,k,f] = self.input_heatmap_encoder(x[:,:,:,:,k,f])
 
         t_results = self.temporal_encoder(batch_heatmaps)
         return t_results
 
     def training_step(self, batch, batch_idx):
-        batch_imgs = batch['img'].float().to(self.device)
+        batch_imgs = batch['img'].float()
         batch_gt_hm = batch['heatmap'][:,:,:,:,:,self.num_frame//2]
         temporal_hm = self(batch_imgs)
         t_loss = self.loss(temporal_hm, batch_gt_hm, batch_gt_hm>0)
-        self.log('training loss', t_loss, prog_bar=True)
+        print(t_loss)
         return t_loss
 
     def validation_step(self, batch, batch_idx):
-        batch_imgs = batch['img'].float().to(self.device)
+        batch_imgs = batch['img'].float()
         batch_gt_hm = batch['heatmap'][:,:,:,:,:,self.num_camera_view//2]
         temporal_hm = self(batch_imgs)
         t_loss = self.loss(temporal_hm, batch_gt_hm, batch_gt_hm>0)

@@ -31,7 +31,7 @@ def main():
                   num_feature=num_feature, num_levels=num_levels)
     temporal_restnet = TemporalResnet(in_channels, out_channels, num_feature)
     model = AggregateModel(resnet, unet, temporal_restnet,
-                           weighted_mse_loss, in_channels, out_channels)
+                           weighted_mse_loss, in_channels, out_channels, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     trainer.fit(model, train_dataloader=data_loader['valid'])
 
 
