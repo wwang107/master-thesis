@@ -6,7 +6,7 @@ SRC_FOLDER="src/"
 
 mkdir $RUN_FOLDER
 docker run --gpus all\
-        --shm-size=256m\
+        --shm-size=8g\
         -p 6006:6006\
         -v $COCO_DATASET:/workspace/dataset/coco\
         -v $CMU_DATASET:/workspace/dataset/panoptic\
