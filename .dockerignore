@@ -1,6 +1,9 @@
 .vscode
 
 dataset/
+lightening_logs/
+pretrain/
+runs/
 
 __pycache__
 .ipynb_checkpoints
