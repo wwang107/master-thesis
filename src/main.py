@@ -16,7 +16,6 @@ def weighted_mse_loss(input, target, weight):
 
 def main():
     cfg = get_cfg_defaults()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     data_loader = {
         # 'train': make_dataloader(cfg, dataset_name='cmu', is_train=True),

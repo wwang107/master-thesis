@@ -79,7 +79,7 @@ class TemporalResnet(pl.LightningModule):
             out = self.encoders(x[:,:,:,:,k,:])
             results.append(self.last_conv(out))
 
-        return torch.stack(results)
+        return torch.stack(results, dim=4)
 
     class InputLayer(nn.Module):
         def __init__(self, in_channels, out_channels) -> None:
