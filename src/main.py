@@ -46,7 +46,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--gpus', default=1)
     parser.add_argument('--images_dir', default='images')
-    parser.add_argument('--resnet_weight_dir', default='/home/wei/master-thesis/pretrain/CutomizeResNet-experiment/best_13.pth')
+    parser.add_argument('--resnet_weight_dir', default='pretrain/CutomizeResNet-experiment/best_13.pth')
     parser.add_argument('--temporal_encoder', action='store_true')
     parser.add_argument('--view_encoder', action='store_true')
     parser.add_argument('--num_feat', default=110)
