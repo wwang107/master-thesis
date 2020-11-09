@@ -1,8 +1,8 @@
 COCO_DATASET=$1
 CMU_DATASET=$2
 LIGHTENING_LOG_DIR=$3
-IMG_LOG_DIR=$3
-PRETRAIN_DIR=$4
+IMG_LOG_DIR=$4
+PRETRAIN_DIR=$5
 PWD=$(pwd)
 SRC_FOLDER="src/"
 
@@ -17,4 +17,4 @@ docker run --gpus all\
         -v $PRETRAIN_DIR:/workspace/pretrain\
         -v $PWD/$SRC_FOLDER:/workspace/src\
         -v /etc/localtime:/etc/localtime:ro\
-        --rm -it weiwang/master-thesis:dev /bin/bash
+        --rm -it weiwang/master-thesis:dev / 
