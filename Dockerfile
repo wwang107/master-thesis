@@ -6,3 +6,4 @@ RUN conda install -c conda-forge opencv
 RUN conda install -c conda-forge json_tricks
 RUN conda install -c conda-forge pycocotools
 RUN conda install -c conda-forge gdown
+RUN conda install -c anaconda scipy
