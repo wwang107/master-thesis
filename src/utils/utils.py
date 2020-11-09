@@ -45,6 +45,7 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
     gt_keypoints: [batch_size, num_max_person, num_joints, 2d_coordinates_and_visibility], Note that 2d_coordinates_and_visibility has order of yxv
     detected_keypoints: [batch_size, num_joints, num_keypoints], Note that the order of 2d_coordinate is yx
     """
+    batch_gt_keypoints = batch_gt_keypoints.detach().clone().cpu()
     num_batch_size = batch_gt_keypoints.size(0)
     num_joints = len(batch_detected_keypoints[0])
     assert num_batch_size == len(
@@ -56,12 +57,14 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
           for i in range(num_batch_size)]  # false positive
     fn = [[[] for i in range(num_joints)]
           for i in range(num_batch_size)]  # false negative
-    tp_dist = 0
+
     result = {'false positive': {'points': [], 'num': 0},
               'true positive': {'points': [], 'num': 0},
-              'false negative': {'points': [], 'num': 0}
+              'false negative': {'points': [], 'num': 0},
               }
     
+    tp_dist = 0.0
+    tp_count = 0
     total_gt_joints = 0
     for i in range(num_batch_size):
         for j, detected_joints in enumerate(batch_detected_keypoints[i]):
@@ -81,8 +84,9 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
                 
                 cost_matrix = cdist(detected_joints, gt_joints)
                 paired_det_inds, paired_gt_inds = linear_sum_assignment(cost_matrix)
+                tp_dist += np.sum(np.sum(cost_matrix[paired_det_inds, paired_gt_inds]))
+                tp_count += len(paired_det_inds)
                 tp_condition = cost_matrix[paired_det_inds,paired_gt_inds] <= thresh
-                tp_dist += np.sum(np.sum(cost_matrix[paired_det_inds[tp_condition], paired_gt_inds[tp_condition]]))
                 tp_inds[paired_det_inds[tp_condition]] = True
                 fn_inds[paired_gt_inds[tp_condition]] = False
                 fp_inds = ~tp_inds
@@ -102,6 +106,8 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
                     result['false positive']['num'] += num_fp
                 
             assert result['false negative']['num'] + result['true positive']['num'] == total_gt_joints
+    
+    result['distance'] = tp_dist/tp_count if tp_count > 0 else None
     result['false positive']['points'] = fp
     result['false negative']['points'] = fn
     result['true positive']['points'] = tp

@@ -3,25 +3,28 @@ from torch import nn
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, dilation_size: int = 1) -> None:
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: Tuple, dilation:int) -> None:
         super(ResidualBlock, self).__init__()
-        assert kernel_size % 2 != 0, "kernel size can only be odd number"
-        padding = kernel_size // 2
+        padding_mode = 'zeros'
+        padding = (kernel_size[0]//2, kernel_size[1]//2, kernel_size[2]//2)
 
         self.conv1 = nn.Conv3d(in_channels, out_channels,
-                               kernel_size=(kernel_size, kernel_size, 1),
-                               padding=(padding, padding, 0))
+                               kernel_size=kernel_size,
+                               padding=padding,
+                               padding_mode=padding_mode)
         self.conv2 = nn.Sequential(
             nn.Conv3d(out_channels, out_channels,
-                      kernel_size=(kernel_size, kernel_size, kernel_size),
-                      padding=(padding, padding, padding)),
+                      kernel_size=kernel_size,
+                      padding=padding,
+                      padding_mode=padding_mode),
             nn.BatchNorm3d(out_channels),
             nn.ReLU()
         )
         self.conv3 = nn.Sequential(
             nn.Conv3d(out_channels, out_channels,
-                      kernel_size=(kernel_size, kernel_size, kernel_size),
-                      padding=(padding, padding, padding)),
+                      kernel_size=kernel_size,
+                      padding=padding,
+                      padding_mode=padding_mode),
             nn.BatchNorm3d(out_channels),
             nn.ReLU()
         )
@@ -36,13 +39,13 @@ class ResidualBlock(nn.Module):
 
 
 class TemporalResidualBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, diliation_size: int = 1, stride_size: int = 1) -> None:
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: Tuple, diliation_size: int = 1, stride_size: int = 1) -> None:
         '''
         '''
         super().__init__()
-        assert kernel_size % 2 != 0
-        self.t = kernel_size
         self.d = diliation_size
+        self.t = kernel_size[2]
+        self.pad = kernel_size[0] // 2
 
         self.conv1 = nn.Sequential(
             nn.Conv3d(in_channels, out_channels//2, kernel_size=(1, 1, 1)),
@@ -50,7 +53,7 @@ class TemporalResidualBlock(nn.Module):
             nn.ReLU())
         self.conv2 = nn.Sequential(
             nn.Conv3d(out_channels//2, out_channels,
-                      kernel_size=(1, 1, self.t), dilation=(1, 1, self.d), stride=(1, 1, stride_size)),
+                      kernel_size=kernel_size, dilation=(1, 1, self.d), padding=(self.pad, self.pad, 0),stride=(1, 1, stride_size)),
             nn.BatchNorm3d(out_channels),
             nn.ReLU())
         self.conv3 = nn.Sequential(
@@ -89,24 +92,24 @@ class UpSampleBlock(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, basic_block, in_channels: int, out_channels: int, kernel_size: int, dilation_size: int = 1, apply_pooling: bool = True) -> None:
+    def __init__(self, basic_block, in_channels: int, out_channels: int, kernel_size: Tuple, dilation_size: int = 1, apply_pooling: bool = True, pool_kernel:Tuple = (2,2,2)) -> None:
         super(Encoder, self).__init__()
         if apply_pooling:
             self.conv_block = nn.Sequential(
-                nn.MaxPool3d(kernel_size=2),
+                nn.MaxPool3d(kernel_size=pool_kernel),
                 basic_block(in_channels, out_channels, kernel_size, dilation_size))
         else:
-            self.conv_block = basic_block
+            self.conv_block = basic_block(in_channels, out_channels, kernel_size, dilation_size)
 
     def forward(self, x):
         return self.conv_block(x)
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_channel, out_channels, kernel_size) -> None:
+    def __init__(self, basic_block:int, in_channel:int, out_channels:int, kernel_size:Tuple, dilation_size: int = 1, scale_factor:Tuple = (2,2,2)) -> None:
         super(Decoder, self).__init__()
-        self.up_sample_block = UpSampleBlock(scale_factor=2, mode='nearest')
-        self.conv_block = ResidualBlock(in_channel, out_channels, kernel_size)
+        self.up_sample_block = UpSampleBlock(scale_factor=scale_factor, mode='nearest')
+        self.conv_block = basic_block(in_channel, out_channels, kernel_size, dilation_size)
 
     def forward(self, x, encoder_feature=None):
         out = self.up_sample_block(x)

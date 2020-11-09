@@ -29,3 +29,11 @@ class CustomizedResnet(nn.Module):
         """
         x = self.encoder(x)
         return self.decoder(x)
+
+    def deactive_batchnorm(self):
+        for m in self.encoder.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.eval()
+            if isinstance(m, nn.Dropout2d):
+                m.eval()
+        return self

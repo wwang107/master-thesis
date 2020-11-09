@@ -214,16 +214,15 @@ def save_batch_sequence_image_with_joint(batch_image,
         cv2.imwrite('{}_frame_{}.png'.format(file_name, i), grid_image)
 
 
-def save_batch_multi_view_with_heatmap(batch_image, batch_heatmaps, file_name, normalize=True):
+def save_batch_multi_view_with_heatmap(batch_image, batch_heatmaps, normalize=True):
     num_view = batch_heatmaps.size(4)
     multi_view_images = []
     for k in range(num_view):
-        file_name_view = file_name + '_{}'.format(k)
         multi_view_images.append(
             save_batch_heatmaps_multi(
                 batch_image=batch_image[:, :, :, :, k],
                 batch_heatmaps=batch_heatmaps[:, :, :, :, k],
-                file_name=file_name_view, normalize=normalize)
+                normalize=normalize)
         )
     return multi_view_images
 
