@@ -17,4 +17,4 @@ docker run --gpus all\
         -v $PRETRAIN_DIR:/workspace/pretrain\
         -v $PWD/$SRC_FOLDER:/workspace/src\
         -v /etc/localtime:/etc/localtime:ro\
-        --rm -it weiwang/master-thesis:dev / 
+        --rm -it weiwang/master-thesis:dev /bin/bash
