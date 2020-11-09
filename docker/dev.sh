@@ -2,8 +2,8 @@ COCO_DATASET=$1
 CMU_DATASET=$2
 LIGHTENING_LOG_DIR=$3
 IMG_LOG_DIR=$3
+PRE_TRAIN=$4
 PWD=$(pwd)
-RUN_FOLDER="runs/"
 SRC_FOLDER="src/"
 
 mkdir $RUN_FOLDER
@@ -14,6 +14,7 @@ docker run --gpus all\
         -v $CMU_DATASET:/workspace/dataset/panoptic\
         -v $LIGHTENING_LOG_DIR:/workspace/lightening_logs\
         -v $IMG_LOG_DIR:/workspace/images\
+        -v $PRE_TRAIN:/workspace/pretrain\
         -v $PWD/$SRC_FOLDER:/workspace/src\
         -v /etc/localtime:/etc/localtime:ro\
         --rm -it weiwang/master-thesis:dev /bin/bash
