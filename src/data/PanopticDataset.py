@@ -77,7 +77,7 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["160224_haggling1", "160422_haggling1"]
+TRAIN_LIST = ["160224_haggling1", "161202_haggling1"]
 
 VAL_LIST = ["160226_haggling1"]
 

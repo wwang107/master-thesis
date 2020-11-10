@@ -12,7 +12,7 @@ docker run --gpus all\
         -p 6006:6006\
         -v $COCO_DATASET:/workspace/dataset/coco\
         -v $CMU_DATASET:/workspace/dataset/panoptic\
-        -v $LIGHTENING_LOG_DIR:/workspace/lightening_logs\
+        -v $LIGHTENING_LOG_DIR:/workspace/lightning_logs\
         -v $IMG_LOG_DIR:/workspace/images\
         -v $PRETRAIN_DIR:/workspace/pretrain\
         -v $PWD/$SRC_FOLDER:/workspace/src\
