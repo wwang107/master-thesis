@@ -144,7 +144,7 @@ class PanopticDataset(Dataset):
                 self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
             )
             step = self.num_frames_in_subseq
-            end_frame = len(skel_json_paths) if is_train else start_frame + 100
+            end_frame = len(skel_json_paths) if is_train else start_frame + 640
 
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):
