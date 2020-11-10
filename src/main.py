@@ -19,7 +19,7 @@ def weighted_mse_loss(input, target, weight):
 
 
 def main(hparams):
-    
+    print(hparams)
     cfg = get_cfg_defaults()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     parser.add_argument('--resnet_weight_dir', default='pretrain/CutomizeResNet-experiment/best_13.pth')
     parser.add_argument('--temporal_encoder', action='store_true')
     parser.add_argument('--view_encoder', action='store_true')
-    parser.add_argument('--num_feat', default=110)
-    parser.add_argument('--num_level', default=2)
+    parser.add_argument('-num_feat', default=110)
+    parser.add_argument('-num_level', default=2)
     args = parser.parse_args()
     main(args)

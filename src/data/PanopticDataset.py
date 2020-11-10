@@ -77,7 +77,7 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ['160422_ultimatum1']
+TRAIN_LIST = ["160224_haggling1", "160422_haggling1"]
 
 VAL_LIST = ["160226_haggling1"]
 
@@ -106,6 +106,7 @@ class PanopticDataset(Dataset):
         self.num_joints = 17
         self.num_row_per_joints = 3
         self.num_directional_keypoint = 55
+        self.use_cameras = TRAINING_CAMERA_ID if is_train else VALIDATION_CAMERA_ID
 
         self.files = {}
         self.files["sub_seq_data"] = []
@@ -123,7 +124,7 @@ class PanopticDataset(Dataset):
             cameras = {(cam["panel"], cam["node"]): cam for cam in calib["cameras"]}
             # Select an HD camera (0,0) - (0,30), where the zero in the first index means HD camera
             print("Loading hd images path...")
-            for cam_id in TRAINING_CAMERA_ID:
+            for cam_id in self.use_cameras:
                 if cam_id in cameras:
                     cam = cameras[cam_id]
                     cam["K"] = np.matrix(cam["K"])
@@ -142,8 +143,9 @@ class PanopticDataset(Dataset):
             start_frame = (
                 self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
             )
-            step = self.num_frames_in_subseq if is_train else 1
-            end_frame = len(skel_json_paths) if is_train else start_frame + 100*step
+            step = self.num_frames_in_subseq
+            end_frame = len(skel_json_paths) if is_train else start_frame + 100
+
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):
                 pose3d_subseq = []
@@ -166,7 +168,7 @@ class PanopticDataset(Dataset):
                         break
                     pose3d_subseq.append(poses3d)
 
-                    for cam_id in TRAINING_CAMERA_ID:
+                    for cam_id in self.use_cameras:
                         if cam_id not in hd_img_subseq:
                             hd_img_subseq[cam_id] = []
                         postfix = skel_json_paths[i - j].name.replace("body3DScene", "")
