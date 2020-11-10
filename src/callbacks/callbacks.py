@@ -32,7 +32,7 @@ class LogModelHeatmaps(Callback):
         self.num_frame = num_frame // 2
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-        if (trainer.batch_idx + 1) % self.logging_batch_interval != 0:
+        if (batch_idx+ 1) % self.logging_batch_interval != 0:
             return
         
         heatmaps_dict = outputs['heatmaps']
