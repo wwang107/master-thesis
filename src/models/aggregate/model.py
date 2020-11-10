@@ -1,8 +1,6 @@
 from os import stat
-from pickle import TRUE
 import torch
 import pytorch_lightning as pl
-import cv2
 from utils.utils import find_keypoints_from_heatmaps, match_detected_groundtruth_keypoint
 
 class AggregateModel(pl.LightningModule):
@@ -160,8 +158,9 @@ class AggregateModel(pl.LightningModule):
 
             stats['temporal_encoder'] = self.get_average_confusion_table(
                 t_results)
-            self.log('avg_validation/camera_view_encoder',
-                     t_loss, on_epoch=True)
+            
+            self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
+
             heatmaps['temporal_encoder'] = {'heatmaps':temporal_heatmaps, 'images':batch_imgs}
             loss = t_loss
 
@@ -180,7 +179,7 @@ class AggregateModel(pl.LightningModule):
                     camera_view_heatmaps, batch_gt_hm, weight)
             stats['camera_view_encoder'] = self.get_average_confusion_table(
                 c_results)
-            self.log('avg_validation/temporal_encoder', c_loss, on_epoch=True)
+            self.log('avg_validation/camera_view_encoder', c_loss, on_epoch=True)
             heatmaps['camera_view_encoder'] = {'heatmaps':camera_view_heatmaps, 'images':batch_imgs}
             loss = c_loss
 
