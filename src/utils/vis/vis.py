@@ -414,7 +414,7 @@ def save_batch_heatmaps_multi(batch_image, batch_heatmaps, normalize=True):
     file_name: saved file name
     '''
     if normalize:
-        batch_image = batch_image.cpu().clone().float()
+        batch_image = batch_image.cpu().float()
         min = float(batch_image.min())
         max = float(batch_image.max())
 
