@@ -89,16 +89,17 @@ class PanopticDataset(Dataset):
 
     def __init__(
         self, 
-        cfg, 
+        cfg,
+        num_view,
         heatmap_generator=None, 
         keypoint_generator=None,
-        is_train=True,
+        is_train=True
     ):
         super().__init__()
         self.cfg = cfg
         self.is_train = is_train
         self.num_frames_in_subseq = cfg.DATASET.NUM_FRAME_PER_SUBSEQ
-        self.num_view = cfg.DATASET.NUM_VIEW
+        self.num_view = num_view 
         self.num_max_people = cfg.DATASET.MAX_NUM_PEOPLE
         self.keypoint_generator = keypoint_generator
         self.heatmap_generator = heatmap_generator
@@ -143,7 +144,7 @@ class PanopticDataset(Dataset):
             start_frame = (
                 self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
             )
-            step = self.num_frames_in_subseq
+            step = self.num_frames_in_subseq if is_train else 1
             end_frame = len(skel_json_paths) if is_train else start_frame + 640
 
             print("Loading skeleton...")
@@ -294,7 +295,7 @@ class PanopticDataset(Dataset):
         return {
             "heatmap": torch.from_numpy(hm),
             "img": torch.from_numpy(img),
-            "keypoint2d": keypoint2d,
+            "keypoint2d": torch.from_numpy(keypoint2d),
             "num_person": num_person
         }
 
@@ -329,7 +330,21 @@ class PanopticDataset(Dataset):
             camera["distCoef"],
         )
         return keypoints2d
+
+class ReplicateViewPanoptic(PanopticDataset):
+    def __init__(self, cfg, num_view, heatmap_generator=None, keypoint_generator=None, is_train=True) -> None:
+        super().__init__(cfg, 1, heatmap_generator, keypoint_generator, is_train)
+        self.num_replication = num_view
     
-    @staticmethod
-    def evaluation(gt, pred):
-        pass
+    def __getitem__(self, index: int):
+        data = super().__getitem__(index)
+        hm = data['heatmap'].repeat(1,1,1,self.num_replication,1)
+        img = data['img'].repeat(1,1,1,self.num_replication,1)
+        keypoint2d = data['keypoint2d'].repeat(1,1,1,self.num_replication,1)
+        num_person = data['num_person']
+        return {
+            "heatmap": hm,
+            "img": img,
+            "keypoint2d": keypoint2d,
+            "num_person": num_person
+        }

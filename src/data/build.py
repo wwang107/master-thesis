@@ -7,6 +7,7 @@ import torch.utils.data
 from .COCODataset import CocoDataset as coco
 from .COCOKeypoints import CocoKeypoints as coco_kpt
 from .PanopticDataset import PanopticDataset as cmu_kpt
+from .PanopticDataset import ReplicateViewPanoptic as replicate_cmu_kpt
 from .transforms import build_transforms, transforms
 
 from .target_generators import HeatmapGenerator
@@ -52,7 +53,7 @@ def build_dataset(cfg, is_train):
 
     return dataset
 
-def build_CMU_dataset(cfg, is_train):
+def build_CMU_dataset(cfg, is_train, replicate_view=False):
     directional_keypoint_generator = DirectionalKeypointsGenerator(
         cfg.DATASET.NUM_JOINTS,
         coco_skeleton['skeleton'])
@@ -62,23 +63,33 @@ def build_CMU_dataset(cfg, is_train):
         cfg.DATASET.OUTPUT_SIZE,
         cfg.DATASET.NUM_JOINTS + num_pair*2,
         cfg.DATASET.SIGMA)
-    dataset = cmu_kpt(
-        cfg,
-        heatmap_generator,
-        directional_keypoint_generator,
-        is_train
-        )
+    if replicate_view:
+        dataset = replicate_cmu_kpt(
+            cfg,
+            cfg.DATASET.NUM_VIEW,
+            heatmap_generator,
+            directional_keypoint_generator,
+            is_train
+            )
+    else:
+        dataset = cmu_kpt(
+            cfg,
+            cfg.DATASET.NUM_VIEW,
+            heatmap_generator,
+            directional_keypoint_generator,
+            is_train
+            )
 
     return dataset
 
 
-def make_dataloader(cfg, dataset_name='coco', is_train=True):
+def make_dataloader(cfg, dataset_name='coco', is_train=True, replicate_view=False):
     if dataset_name == 'coco':
         dataset = build_dataset(cfg, is_train)
         data_loader = torch.utils.data.DataLoader(
             dataset, num_workers=2, batch_size=8, collate_fn=collate_fn)
     else:
-        dataset = build_CMU_dataset(cfg, is_train)
+        dataset = build_CMU_dataset(cfg, is_train, replicate_view)
         is_shuffle = True if is_train else False
         num_wokers = cfg.DATASET.CMU_NUM_WORKERS
         batch_size = cfg.DATASET.CMU_BATCH_SIZE

@@ -22,9 +22,10 @@ def main(hparams):
     print(hparams)
     cfg = get_cfg_defaults()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
     in_channels, out_channels, num_feature = 55, 55, hparams.num_feat
     num_levels = hparams.num_level
+    replicate_view = hparams.replicate_view
+
     resnet = CustomizedResnet(use_pretrained=False, fix_encoder_params=False)
     resnet = load_weight(resnet,load_model_state_dict(hparams.resnet_weight_dir, device))
     resnet = resnet.deactive_batchnorm()
@@ -33,8 +34,8 @@ def main(hparams):
     temporal_model = TemporalUnet(in_channels, out_channels, num_feature) if hparams.temporal_encoder else None
     
     data_loader = {
-        'train': make_dataloader(cfg, dataset_name='cmu', is_train=True),
-        'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False)
+        'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
+        'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
     }
     trainer = pl.Trainer(gpus=hparams.gpus, max_epochs= 20, callbacks=[LogConfusionTable(), LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
     model = AggregateModel(resnet, camera_view_model, temporal_model,
@@ -49,6 +50,7 @@ if __name__ == "__main__":
     parser.add_argument('--resnet_weight_dir', default='pretrain/CutomizeResNet-experiment/best_13.pth')
     parser.add_argument('--temporal_encoder', action='store_true')
     parser.add_argument('--view_encoder', action='store_true')
+    parser.add_argument('--replicate_view', action='store_true')
     parser.add_argument('-num_feat', default=110)
     parser.add_argument('-num_level', default=2)
     args = parser.parse_args()
