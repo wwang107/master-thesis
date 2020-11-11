@@ -35,25 +35,18 @@ class LogModelHeatmaps(Callback):
         if (batch_idx) % self.logging_batch_interval != 0:
             return
 
-        heatmaps_dict = outputs['heatmaps']
-        prefix = os.path.join(self.log_dir, 'ver_' + str(trainer.logger.version))
-        os.makedirs(prefix, exist_ok=True)
-        
-        encoders = [key for key in heatmaps_dict if heatmaps_dict[key] != None]
         global_step = pl_module.global_step
         epoch = pl_module.current_epoch
-        for encoder in encoders:
-            images = heatmaps_dict[encoder]['images'][:,:,:,:,:, self.num_frame // 2].cpu()
-            
-            if encoder == 'temporal_encoder':
-                heatmaps = heatmaps_dict[encoder]['heatmaps']
-            else:
-                heatmaps = heatmaps_dict[encoder]['heatmaps'][:,:,:,:,:, self.num_frame // 2]
+        prefix = os.path.join(self.log_dir, 'ver_' + str(trainer.logger.version))
+        os.makedirs(prefix, exist_ok=True)
 
-            heatmaps = heatmaps.cpu()
-            visualization = save_batch_multi_view_with_heatmap(images,heatmaps)
-            for view, image in enumerate(visualization):
-                file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
-                cv2.imwrite(str(file_name), image)
-        
-        
+        batch_images = batch['img']
+        out = pl_module(batch_images.float().to(pl_module.device))
+        for encoder in out:
+            if out[encoder] != None:
+                heatmaps = out[encoder] if encoder != 'temporal_encoder' else out[encoder][:,:,:,:,:, self.num_frame // 2]
+                heatmaps = heatmaps.cpu()
+                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.num_frame // 2],heatmaps)
+                for view, image in enumerate(visualization):
+                    file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                    cv2.imwrite(str(file_name), image)

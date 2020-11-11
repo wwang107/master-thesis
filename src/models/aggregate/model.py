@@ -129,8 +129,6 @@ class AggregateModel(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         stats = {'temporal_encoder': None,
                  'camera_view_encoder': None, 'input_heatmap_encoder': None}
-        heatmaps = {'temporal_encoder': None,
-                    'camera_view_encoder': None, 'input_heatmap_encoder': None}
 
         batch_imgs = batch['img'].float()
         batch_gt_hm = batch['heatmap']
@@ -143,7 +141,6 @@ class AggregateModel(pl.LightningModule):
             input_heatmaps, batch_gt_keypoint, only_use_middle_frame)
         stats['input_heatmap_encoder'] = self.get_average_confusion_table(
             i_results)
-        heatmaps['input_heatmap_encoder'] = {'heatmaps':input_heatmaps, 'images':batch_imgs}
 
         if self.temporal_encoder == None and self.camera_view_encoder == None:
             raise NotImplementedError()
@@ -160,8 +157,6 @@ class AggregateModel(pl.LightningModule):
                 t_results)
             
             self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
-
-            heatmaps['temporal_encoder'] = {'heatmaps':temporal_heatmaps, 'images':batch_imgs}
             loss = t_loss
 
         elif self.camera_view_encoder != None and self.temporal_encoder == None:
@@ -180,7 +175,6 @@ class AggregateModel(pl.LightningModule):
             stats['camera_view_encoder'] = self.get_average_confusion_table(
                 c_results)
             self.log('avg_validation/camera_view_encoder', c_loss, on_epoch=True)
-            heatmaps['camera_view_encoder'] = {'heatmaps':camera_view_heatmaps, 'images':batch_imgs}
             loss = c_loss
 
         elif self.camera_view_encoder != None and self.temporal_encoder != None:
@@ -201,11 +195,9 @@ class AggregateModel(pl.LightningModule):
             self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
             self.log('avg_validation/camera_view_encoder',
                      c_loss, on_epoch=True)
-            heatmaps['temporal_encoder'] = {'heatmaps':temporal_heatmaps, 'images':batch_imgs}
-            heatmaps['camera_view_encoder'] = {'heatmaps':camera_view_heatmaps, 'images':batch_imgs}
             loss = t_loss + c_loss
 
-        return {'loss':loss, 'stats': stats, 'heatmaps':heatmaps}
+        return {'loss':loss, 'stats': stats}
 
     def get_average_confusion_table(self, confusion_results):
         total = len(confusion_results)
