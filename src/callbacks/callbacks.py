@@ -41,13 +41,14 @@ class LogModelHeatmaps(Callback):
         global_step = pl_module.global_step
         epoch = pl_module.current_epoch
         for encoder in encoders:
-            images = heatmaps_dict[encoder]['images'][:,:,:,:,:, self.num_frame // 2]
+            images = heatmaps_dict[encoder]['images'][:,:,:,:,:, self.num_frame // 2].cpu()
             
             if encoder == 'temporal_encoder':
                 heatmaps = heatmaps_dict[encoder]['heatmaps']
             else:
                 heatmaps = heatmaps_dict[encoder]['heatmaps'][:,:,:,:,:, self.num_frame // 2]
-            
+
+            heatmaps = heatmaps.cpu()
             visualization = save_batch_multi_view_with_heatmap(images,heatmaps)
             for view, image in enumerate(visualization):
                 file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
