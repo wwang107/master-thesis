@@ -420,7 +420,17 @@ def save_batch_heatmaps_multi(batch_image, batch_heatmaps, normalize=True):
 
         batch_image.add_(-min).div_(max - min + 1e-5)
 
-    # batch_image = batch_image.flip(1)
+    batch_image = batch_image.cpu()\
+                              .mul(255)\
+                              .clamp(0, 255)\
+                              .permute(0,2,3,1)\
+                              .byte()\
+                              .cpu().numpy()
+    batch_heatmaps = batch_heatmaps.mul(255)\
+                                   .clamp(0, 255)\
+                                   .byte()\
+                                   .cpu().numpy()
+    
     batch_size = batch_heatmaps.size(0)
     num_joints = batch_heatmaps.size(1)
     heatmap_height = batch_heatmaps.size(2)
@@ -431,16 +441,8 @@ def save_batch_heatmaps_multi(batch_image, batch_heatmaps, normalize=True):
         dtype=np.uint8)
 
     for i in range(batch_size):
-        image = batch_image[i].mul(255)\
-                              .clamp(0, 255)\
-                              .permute(1, 2, 0)\
-                              .byte()\
-                              .cpu().numpy()
-        heatmaps = batch_heatmaps[i].mul(255)\
-                                    .clamp(0, 255)\
-                                    .byte()\
-                                    .cpu().numpy()
-
+        image = batch_image[i]
+        heatmaps = batch_heatmaps[i]
         resized_image = cv2.resize(image,
                                    (int(heatmap_width), int(heatmap_height)))
 

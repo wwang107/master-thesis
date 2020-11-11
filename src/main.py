@@ -36,7 +36,7 @@ def main(hparams):
         'train': make_dataloader(cfg, dataset_name='cmu', is_train=True),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False)
     }
-    trainer = pl.Trainer(gpus=hparams.gpus, max_epochs= 20, callbacks=[LogConfusionTable(), LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
+    trainer = pl.Trainer(gpus=hparams.gpus, limit_train_batches=1, max_epochs= 20, callbacks=[LogConfusionTable(), LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
     model = AggregateModel(resnet, camera_view_model, temporal_model,
                            weighted_mse_loss, in_channels, out_channels, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
