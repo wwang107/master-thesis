@@ -1,4 +1,3 @@
-from os import stat
 import torch
 import pytorch_lightning as pl
 from utils.utils import find_keypoints_from_heatmaps, match_detected_groundtruth_keypoint
@@ -83,35 +82,76 @@ class AggregateModel(pl.LightningModule):
         return results
 
     def training_step(self, batch, batch_idx):
+        loss = self.shared_step(batch, batch_idx)
+        if self.camera_view_encoder != None and self.temporal_encoder == None:
+            loss_key = 'training_step/camera_encoder'
+            self.log(loss_key, loss)
+            return loss
+        elif self.camera_view_encoder == None and self.temporal_encoder != None:
+            loss_key = 'training_step/temporal_encoder'
+            self.log(loss_key, loss)
+            return loss
+        else:
+            raise NotImplementedError()
+        
+    
+    def validation_step(self, batch, batch_idx):
+        loss = self.shared_step(batch, batch_idx)
+        if self.camera_view_encoder != None and self.temporal_encoder == None:
+            loss_key = 'validation_step_avg_loss/camera_encoder'
+            self.log(loss_key, loss, on_epoch=True)
+            return loss
+        elif self.camera_view_encoder == None and self.temporal_encoder != None:
+            loss_key = 'validation_step_avg_loss/temporal_encoder'
+            self.log(loss_key, loss)
+            return loss
+        else:
+            raise NotImplementedError()
+    
+    def test_step(self, batch, batch_index):
+        batch_imgs = batch['img'].float()
+        stats = {'temporal_encoder': None, 'camera_view_encoder': None, 'input_heatmap_encoder': None}
+        
+        input_heatmaps = self.get_input_heatmaps(batch_imgs)
+        if self.camera_view_encoder != None:
+            camera_heatmap = self.get_camera_heatmap(input_heatmaps) 
+
+        if self.temporal_encoder != None:
+            pad = (self.num_frame // 2, self.num_frame // 2)
+            input_heatmaps = torch.nn.functional.pad(input_heatmaps, pad)
+            
+
+        
+
+    def shared_step(self, batch, batch_index):
         batch_imgs = batch['img'].float()
         batch_gt_heatmaps = batch['heatmap']
-        results = self(batch_imgs)
+        out = self(batch_imgs)
         middle_frame = self.num_frame//2
-        loss = torch.tensor([0.0])
 
-        if results['temporal_encoder'] == None and results['camera_view_encoder'] == None:
+        if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
             raise NotImplementedError()
 
-        if results['temporal_encoder'] != None and results['camera_view_encoder'] == None:
-            temporal_heatmaps = results['temporal_encoder']
+        if out['temporal_encoder'] != None and out['camera_view_encoder'] == None:
+            temporal_heatmaps = out['temporal_encoder']
             weight = (batch_gt_heatmaps[:, :, :, :, :, middle_frame] > 0.1) * \
                 1.0 + (batch_gt_heatmaps[:, :, :, :,
                                          :, middle_frame] <= 0.1) * 0.1
             t_loss = self.loss(
                 temporal_heatmaps, batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
-            loss = t_loss
+            return t_loss
 
-        elif results['camera_view_encoder'] != None and results['temporal_encoder'] == None:
-            camera_view_heatmaps = results['camera_view_encoder']
+        elif out['camera_view_encoder'] != None and out['temporal_encoder'] == None:
+            camera_view_heatmaps = out['camera_view_encoder']
             weight = (batch_gt_heatmaps > 0.1) * \
                 1.0 + (batch_gt_heatmaps <= 0.1) * 0.1
             c_loss = self.loss(
                 camera_view_heatmaps, batch_gt_heatmaps, weight)
-            loss = c_loss
+            return c_loss
 
-        elif results['camera_view_encoder'] != None and results['temporal_encoder'] != None:
-            temporal_heatmaps = results['temporal_encoder']
-            camera_view_heatmaps = results['camera_view_encoder']
+        elif out['camera_view_encoder'] != None and out['temporal_encoder'] != None:
+            temporal_heatmaps = out['temporal_encoder']
+            camera_view_heatmaps = out['camera_view_encoder']
             weight = (batch_gt_heatmaps[:, :, :, :, :, middle_frame] > 0.1) * \
                 1.0 + (batch_gt_heatmaps[:, :, :, :,
                                          :, middle_frame] <= 0.1) * 0.1
@@ -119,85 +159,81 @@ class AggregateModel(pl.LightningModule):
                 temporal_heatmaps, batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
             c_loss = self.loss(
                 camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
+    
+            return c_loss + t_loss
 
-            loss = t_loss + c_loss
+    # def validation_step(self, batch, batch_idx):
+    #     stats = {'temporal_encoder': None,
+    #              'camera_view_encoder': None, 'input_heatmap_encoder': None}
 
-        self.log('training', loss, on_step = True ,on_epoch=True)
+    #     batch_imgs = batch['img'].float()
+    #     batch_gt_hm = batch['heatmap']
+    #     batch_gt_keypoint = batch['keypoint2d']
+    #     only_use_middle_frame = True if self.temporal_encoder != None else False
+    #     middle_frame = self.num_frame // 2
 
-        return loss
+    #     input_heatmaps = self.get_input_heatmaps(batch_imgs)
+    #     i_results, t_results, c_results = self.calculate_confusion_table(
+    #         input_heatmaps, batch_gt_keypoint, only_use_middle_frame)
+    #     stats['input_heatmap_encoder'] = self.get_average_confusion_table(
+    #         i_results)
 
-    def validation_step(self, batch, batch_idx):
-        stats = {'temporal_encoder': None,
-                 'camera_view_encoder': None, 'input_heatmap_encoder': None}
+    #     if self.temporal_encoder == None and self.camera_view_encoder == None:
+    #         raise NotImplementedError()
 
-        batch_imgs = batch['img'].float()
-        batch_gt_hm = batch['heatmap']
-        batch_gt_keypoint = batch['keypoint2d']
-        only_use_middle_frame = True if self.temporal_encoder != None else False
-        middle_frame = self.num_frame // 2
+    #     if self.temporal_encoder != None and self.camera_view_encoder == None:
+    #         temporal_heatmaps = self.get_temporal_heatmap(input_heatmaps)
+    #         weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
+    #             1.0 + (batch_gt_hm[:, :, :, :, :, middle_frame] <= 0.1) * 0.1
 
-        input_heatmaps = self.get_input_heatmaps(batch_imgs)
-        i_results, t_results, c_results = self.calculate_confusion_table(
-            input_heatmaps, batch_gt_keypoint, only_use_middle_frame)
-        stats['input_heatmap_encoder'] = self.get_average_confusion_table(
-            i_results)
+    #         t_loss = self.loss(
+    #             temporal_heatmaps, batch_gt_hm[:, :, :, :, :, middle_frame], weight)
 
-        if self.temporal_encoder == None and self.camera_view_encoder == None:
-            raise NotImplementedError()
-
-        if self.temporal_encoder != None and self.camera_view_encoder == None:
-            temporal_heatmaps = self.get_temporal_heatmap(input_heatmaps)
-            weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
-                1.0 + (batch_gt_hm[:, :, :, :, :, middle_frame] <= 0.1) * 0.1
-
-            t_loss = self.loss(
-                temporal_heatmaps, batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-
-            stats['temporal_encoder'] = self.get_average_confusion_table(
-                t_results)
+    #         stats['temporal_encoder'] = self.get_average_confusion_table(
+    #             t_results)
             
-            self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
-            loss = t_loss
+    #         self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
+    #         loss = t_loss
 
-        elif self.camera_view_encoder != None and self.temporal_encoder == None:
-            camera_view_heatmaps = self.get_camera_heatmap(input_heatmaps)
-            if only_use_middle_frame:
-                weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
-                    1.0 + (batch_gt_hm[:, :, :, :, :,
-                                       middle_frame] <= 0.1) * 0.1
-                c_loss = self.loss(
-                    camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-            else:
-                weight = (batch_gt_hm > 0.1) * \
-                    1.0 + (batch_gt_hm <= 0.1) * 0.1
-                c_loss = self.loss(
-                    camera_view_heatmaps, batch_gt_hm, weight)
-            stats['camera_view_encoder'] = self.get_average_confusion_table(
-                c_results)
-            self.log('avg_validation/camera_view_encoder', c_loss, on_epoch=True)
-            loss = c_loss
+    #     elif self.camera_view_encoder != None and self.temporal_encoder == None:
+    #         camera_view_heatmaps = self.get_camera_heatmap(input_heatmaps)
+    #         if only_use_middle_frame:
+    #             weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
+    #                 1.0 + (batch_gt_hm[:, :, :, :, :,
+    #                                    middle_frame] <= 0.1) * 0.1
+    #             c_loss = self.loss(
+    #                 camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_hm[:, :, :, :, :, middle_frame], weight)
+    #         else:
+    #             weight = (batch_gt_hm > 0.1) * \
+    #                 1.0 + (batch_gt_hm <= 0.1) * 0.1
+    #             c_loss = self.loss(
+    #                 camera_view_heatmaps, batch_gt_hm, weight)
+    #         stats['camera_view_encoder'] = self.get_average_confusion_table(
+    #             c_results)
+    #         self.log('avg_validation/camera_view_encoder', c_loss, on_epoch=True)
+    #         loss = c_loss
 
-        elif self.camera_view_encoder != None and self.temporal_encoder != None:
-            temporal_heatmaps = self.get_temporal_heatmap(input_heatmaps)
-            camera_view_heatmaps = self.get_camera_heatmap(input_heatmaps)
-            weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
-                1.0 + (batch_gt_hm[:, :, :, :, :, middle_frame] <= 0.1) * 0.1
+    #     elif self.camera_view_encoder != None and self.temporal_encoder != None:
+    #         temporal_heatmaps = self.get_temporal_heatmap(input_heatmaps)
+    #         camera_view_heatmaps = self.get_camera_heatmap(input_heatmaps)
+    #         weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
+    #             1.0 + (batch_gt_hm[:, :, :, :, :, middle_frame] <= 0.1) * 0.1
 
-            t_loss = self.loss(
-                temporal_heatmaps, batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-            c_loss = self.loss(
-                camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-            stats['temporal_encoder'] = self.get_average_confusion_table(
-                t_results)
-            stats['camera_view_encoder'] = self.get_average_confusion_table(
-                c_results)
+    #         t_loss = self.loss(
+    #             temporal_heatmaps, batch_gt_hm[:, :, :, :, :, middle_frame], weight)
+    #         c_loss = self.loss(
+    #             camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_hm[:, :, :, :, :, middle_frame], weight)
+    #         stats['temporal_encoder'] = self.get_average_confusion_table(
+    #             t_results)
+    #         stats['camera_view_encoder'] = self.get_average_confusion_table(
+    #             c_results)
 
-            self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
-            self.log('avg_validation/camera_view_encoder',
-                     c_loss, on_epoch=True)
-            loss = t_loss + c_loss
+    #         self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
+    #         self.log('avg_validation/camera_view_encoder',
+    #                  c_loss, on_epoch=True)
+    #         loss = t_loss + c_loss
 
-        return {'loss':loss, 'stats': stats}
+    #     return {'loss':loss, 'stats': stats}
 
     def get_average_confusion_table(self, confusion_results):
         total = len(confusion_results)

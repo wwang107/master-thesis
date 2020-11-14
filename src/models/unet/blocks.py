@@ -48,11 +48,11 @@ class TemporalResidualBlock(nn.Module):
         self.pad = kernel_size[0] // 2
 
         self.conv1 = nn.Sequential(
-            nn.Conv3d(in_channels, out_channels//2, kernel_size=(1, 1, 1)),
-            nn.BatchNorm3d(out_channels//2),
+            nn.Conv3d(in_channels, out_channels, kernel_size=(1, 1, 1)),
+            nn.BatchNorm3d(out_channels),
             nn.ReLU())
         self.conv2 = nn.Sequential(
-            nn.Conv3d(out_channels//2, out_channels,
+            nn.Conv3d(out_channels, out_channels,
                       kernel_size=kernel_size, dilation=(1, 1, self.d), padding=(self.pad, self.pad, 0),stride=(1, 1, stride_size)),
             nn.BatchNorm3d(out_channels),
             nn.ReLU())
@@ -63,7 +63,7 @@ class TemporalResidualBlock(nn.Module):
             nn.ReLU())
 
     def forward(self, x):
-        residual = self.__get_sliced_input(x, self.t, self.d)
+        residual = self.__get_sliced_input(self.conv1(x), self.t, self.d)
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)

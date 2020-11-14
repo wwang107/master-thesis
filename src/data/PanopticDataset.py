@@ -52,8 +52,8 @@ Panoptic Joint Label:
 """
 WIDTH = 1920
 HEIGHT = 1080
-TRAINING_CAMERA_ID = [(0, i) for i in range(0, 31) if i != 21]  # missing view 21
-VALIDATION_CAMERA_ID = [(0,12),(0, 6),(0, 3), (0, 1), (0,13), (0,5)]
+TRAINING_CAMERA_ID =  list(set([(0, n) for n in range(0, 31)]) - {(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)})
+VALIDATION_CAMERA_ID = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)]
 HD_IMG = "hdImgs"
 BODY_EDGES = (
     np.array(
@@ -77,9 +77,9 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["160224_haggling1", "161202_haggling1"]
+TRAIN_LIST = ["170407_haggling_a1"]
 
-VAL_LIST = ["160226_haggling1"]
+VAL_LIST = ["160906_pizza1"]
 
 
 class PanopticDataset(Dataset):
@@ -145,7 +145,7 @@ class PanopticDataset(Dataset):
                 self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
             )
             step = self.num_frames_in_subseq if is_train else 1
-            end_frame = len(skel_json_paths) if is_train else start_frame + 640
+            end_frame = len(skel_json_paths)
 
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):

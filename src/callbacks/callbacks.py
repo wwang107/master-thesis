@@ -34,7 +34,13 @@ class LogModelHeatmaps(Callback):
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
         if (batch_idx) % self.logging_batch_interval != 0:
             return
+        self.shared_step(trainer, pl_module, batch)
 
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+        if (batch_idx) % self.logging_batch_interval != 0:
+            return
+            
+    def shared_step(self, trainer, pl_module, batch):
         global_step = pl_module.global_step
         epoch = pl_module.current_epoch
         prefix = os.path.join(self.log_dir, 'ver_' + str(trainer.logger.version))

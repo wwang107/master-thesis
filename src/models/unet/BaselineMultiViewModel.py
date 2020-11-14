@@ -50,7 +50,7 @@ class BaselineMultiViewModel(pl.LightningModule):
 
             for decoder, encoder_features in zip(self.decoders, encoders_features):
                 out = decoder(out, encoder_features)
-                out = self.last_conv(out)
+            out = self.last_conv(out)
             results.append(out)
 
         return torch.stack(results, dim=5)
@@ -61,5 +61,5 @@ class BaselineMultiViewModel(pl.LightningModule):
 # input = torch.zeros((1,55,64,64,5,15))
 # model = BaselineMultiViewModel(55,55,2,3,(3,3,5))
 
-# for i in range(15):
-#     out = model(input[:,:,:,:,:,i])
+# out = model(input[:,:,:,:,:,:])
+# print(out)
