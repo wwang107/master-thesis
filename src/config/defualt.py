@@ -37,7 +37,7 @@ _C.DATASET.SIGMA =  -1
 
 # TRAINING PARAMS
 _C.DATASET.CMU_BATCH_SIZE = 3
-_C.DATASET.CMU_NUM_WORKERS = 6
+_C.DATASET.CMU_NUM_WORKERS = 8
 
 def get_cfg_defaults():
   """Get a yacs CfgNode object with default values for my_project."""
