@@ -113,3 +113,35 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
     result['true positive']['points'] = tp
 
     return result
+
+def pad_heatmap_with_replicate_frame(source, pad):
+    num_frame = source.size(5)
+    pad_left, pad_right = pad
+    padded_size = (source.size(0),
+                   source.size(1), 
+                   source.size(2), 
+                   source.size(3), 
+                   source.size(4),
+                   source.size(5) + pad_left + pad_right)
+
+    target = torch.zeros(padded_size).to(source.device)
+    target[:,:,:,:,:,0:pad_left] = source[:,:,:,:,:,0].unsqueeze(5).repeat(1,1,1,1,1,pad_left)
+    target[:,:,:,:,:,pad_left:pad_left+num_frame] = source
+    target[:,:,:,:,:,pad_left+num_frame: pad_left+pad_right + num_frame] = source[:,:,:,:,:,-1].unsqueeze(5).repeat(1,1,1,1,1,pad_right)
+    return target
+
+def pad_image_with_replicate_frame(source, pad):
+    num_frame = source.size(5)
+    pad_left, pad_right = pad
+    padded_size = (source.size(0),
+                   source.size(1), 
+                   source.size(2), 
+                   source.size(3), 
+                   source.size(4),
+                   source.size(5) + pad_left + pad_right)
+
+    target = torch.zeros(padded_size).to(source.device)
+    target[:,:,:,:,:,0:pad_left] = source[:,:,:,:,:,0].unsqueeze(5).repeat(1,1,1,1,1,pad_left)
+    target[:,:,:,:,:,pad_left:pad_left+num_frame] = source
+    target[:,:,:,:,:,pad_left+num_frame: pad_left+pad_right + num_frame] = source[:,:,:,:,:,-1].unsqueeze(5).repeat(1,1,1,1,1,pad_right)
+    return target

@@ -77,7 +77,7 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["170407_haggling_a1"]
+TRAIN_LIST = ["170407_haggling_a1", "160226_haggling1", "161202_haggling1"]
 
 VAL_LIST = ["160906_pizza1"]
 
@@ -146,7 +146,6 @@ class PanopticDataset(Dataset):
             )
             step = self.num_frames_in_subseq if is_train else 1
             end_frame = len(skel_json_paths)
-
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):
                 pose3d_subseq = []
