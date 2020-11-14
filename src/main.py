@@ -27,7 +27,7 @@ def main(hparams):
     replicate_view = hparams.replicate_view
     is_train_input_encoder = hparams.input_encoder
 
-    resnet = CustomizedResnet(use_pretrained=False, fix_encoder_params=False)
+    resnet = CustomizedResnet(use_pretrained=False)
     resnet = load_weight(resnet,load_model_state_dict(hparams.resnet_weight_dir, device))
 
     camera_view_model = BaselineMultiViewModel(in_channels, out_channels,

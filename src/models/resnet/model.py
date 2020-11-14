@@ -4,7 +4,7 @@ import torchvision.models as models
 
 
 class CustomizedResnet(nn.Module):
-    def __init__(self, use_pretrained=True, fix_encoder_params=False):
+    def __init__(self, use_pretrained=True, fix_encoder_params=True):
         super().__init__()
         self.fix_encoder_params = fix_encoder_params
         resnet18 = models.resnet18(pretrained=use_pretrained)
