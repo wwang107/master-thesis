@@ -67,10 +67,11 @@ class AggregateModel(pl.LightningModule):
         '''
         results = {'input_heatmap_encoder': None,
                    'temporal_encoder': None, 'camera_view_encoder': None}
+        is_train_input_heatmap_encoder = self.train_input_heatmap_encoder and self.training
 
-        with torch.set_grad_enabled(self.train_input_heatmap_encoder):
+        with torch.set_grad_enabled(is_train_input_heatmap_encoder):
             input_heatmaps = self.get_input_heatmaps(x)
-        if self.train_input_heatmap_encoder:
+        if not is_train_input_heatmap_encoder:
             input_heatmaps = input_heatmaps.detach()
 
         results['input_heatmap_encoder'] = input_heatmaps
