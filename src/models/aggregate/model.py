@@ -294,7 +294,7 @@ class AggregateModel(pl.LightningModule):
         result = {'false negative':0, 'false positive':0, 'true positive':0, 'true positive distance':0}
         for k in range(num_camera):
             for f in range(num_frame):
-                batch_detections = find_keypoints_from_heatmaps(batch_heatmaps[:, :, :, :, k, f])
+                batch_detections = find_keypoints_from_heatmaps(batch_heatmaps[:, :, :, :, k, f], threshold=0.5)
                 confusion_metrics = match_detected_groundtruth_keypoint(batch_gt_keypoint[:, :, :, :, k, f], batch_detections)
                 result['false negative'] += confusion_metrics['false negative']['num']
                 result['false positive'] += confusion_metrics['false positive']['num']
