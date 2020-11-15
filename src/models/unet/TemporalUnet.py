@@ -10,9 +10,9 @@ class TemporalUnet(pl.LightningModule):
     '''
     def __init__(self, in_channels: int, out_channels: int,num_feature:int) -> None:
         super().__init__()
-        depth = 3
-        # encoder_kernel_size = (3,3,3)
-        encoder_kernel_size = (3,3,1)
+        depth = 2
+        encoder_kernel_size = (3,3,3)
+        # encoder_kernel_size = (3,3,1)
         decoder_kernel_size = (3,3,1)
         f_maps = [num_feature * pow(2,i) for i in range(0, depth)]
         encoders = []
@@ -20,11 +20,11 @@ class TemporalUnet(pl.LightningModule):
         
         for i in range(depth):
             if i == 0:
-                # encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = False)
-                encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(1,i), apply_pooling = False)
+                encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = False)
+                # encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(1,i), apply_pooling = False)
             else:
-                # encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = True, pool_kernel = (2,2,1))
-                encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(1,i), apply_pooling = True, pool_kernel = (2,2,1))
+                encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = True, pool_kernel = (2,2,1))
+                # encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(1,i), apply_pooling = True, pool_kernel = (2,2,1))
             encoders.append(encoder)
         
         reversed_f_maps = list(reversed(f_maps))
