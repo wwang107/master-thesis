@@ -72,7 +72,7 @@ class TemporalUnet(pl.LightningModule):
     def effective_kernel_size(self, kernel_size, dilation):
         return kernel_size + (kernel_size-1)*dilation
     
-    def output_size(input_size, kernel_size):
+    def output_size(self, input_size, kernel_size):
         return input_size - kernel_size + 1
     class InputLayer(nn.Module):
         def __init__(self, in_channels, out_channels) -> None:
