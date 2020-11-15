@@ -259,12 +259,12 @@ class PanopticDataset(Dataset):
                     pose2d[p, :, :, k, f] = self.map3DkeypointsTo2d(
                         pose3d, self.files[seq_name]["cams_matrix"][cam_id]
                     )
-                    for i in range(self.num_joints):
-                        pose2d[p, 0:2, i, k, f] = affine_transform(
-                            pose2d[p, 0:2, i, k, f], trans
-                        )
-                        pose2d[p, 0, i, k, f] = pose2d[p, 0, i, k, f] * s_x
-                        pose2d[p, 1, i, k, f] = pose2d[p, 1, i, k, f] * s_y
+                    # for i in range(self.num_joints):
+                    #     pose2d[p, 0:2, i, k, f] = affine_transform(
+                    #         pose2d[p, 0:2, i, k, f], trans
+                    #     )
+                    #     pose2d[p, 0, i, k, f] = pose2d[p, 0, i, k, f] * s_x
+                    #     pose2d[p, 1, i, k, f] = pose2d[p, 1, i, k, f] * s_y
                 num_person[f] = p + 1
                 keypoint2d[0:num_person[f], 0:17, :, k, f] = pose2d[
                     0:num_person[f], :, 0:17, k, f
@@ -272,6 +272,19 @@ class PanopticDataset(Dataset):
                 keypoint2d[0:num_person[f], 17:, :, k, f] = self.keypoint_generator(
                     pose2d[0:num_person[f], :, :, k, f].transpose((0, 2, 1)), 0.2
                 )
+                # Check if 2d point is out of width and height of the image
+                x_check = np.bitwise_and(keypoint2d[0:num_person[f], :,0] >= 0, keypoint2d[0:num_person[f], :,0] <= WIDTH - 1)
+                y_check = np.bitwise_and(keypoint2d[0:num_person[f], :,1] >= 0, keypoint2d[0:num_person[f], :,1] <= HEIGHT - 1)
+                check = np.bitwise_and(x_check, y_check)
+                keypoint2d[0:num_person[f],:,2,:,:] = check
+                for per in range(num_person[f]):
+                    for i in range(self.num_directional_keypoint):
+                            keypoint2d[per, i,0:2,  k, f] = affine_transform(
+                                keypoint2d[per, i,0:2, k, f], trans
+                            )
+                
+                keypoint2d[:, :,0, :, :] = keypoint2d[:, :,0, :, :] * s_x
+                keypoint2d[:, :,1, :, :] = keypoint2d[:, :,1, :, :] * s_y
                 heatmap = self.heatmap_generator(
                     keypoint2d[0:num_person[f], :, :, k, f]
                 )
