@@ -14,7 +14,7 @@ class AggregateModel(pl.LightningModule):
                  in_channels=55,
                  out_channels=55,
                  heatmap_size=(64, 64),
-                 num_camera_can_see=6,
+                 num_camera_can_see=5,
                  num_frame_can_see=15,
                  train_input_heatmap_encoder: bool = False):
         super().__init__()

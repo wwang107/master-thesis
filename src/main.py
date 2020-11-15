@@ -35,7 +35,7 @@ def main(hparams):
     temporal_model = TemporalUnet(in_channels, out_channels, num_feature) if hparams.temporal_encoder else None
     model = AggregateModel(resnet, camera_view_model, temporal_model,
                            weighted_mse_loss, in_channels, out_channels, 
-                           train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW)
+                           train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     
     data_loader = {
         'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
