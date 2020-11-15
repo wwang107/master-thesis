@@ -32,7 +32,7 @@ def main(hparams):
 
     camera_view_model = BaselineMultiViewModel(in_channels, out_channels,
                   num_feature=num_feature, num_levels=num_levels, kernel_size=(3,3,5)) if hparams.view_encoder else None
-    temporal_model = TemporalUnet(in_channels, out_channels, num_feature) if hparams.temporal_encoder else None
+    temporal_model = TemporalUnet(in_channels, out_channels, num_feature, input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ) if hparams.temporal_encoder else None
     model = AggregateModel(resnet, camera_view_model, temporal_model,
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)

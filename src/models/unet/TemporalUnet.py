@@ -8,10 +8,11 @@ class TemporalUnet(pl.LightningModule):
     An encoder structure that have a hardcoded depth and fixed recpetive field.
     Currently, only support depth of 4 and receptive field of 15
     '''
-    def __init__(self, in_channels: int, out_channels: int,num_feature:int) -> None:
+    def __init__(self, in_channels: int, out_channels: int,num_feature:int, input_frame:int) -> None:
         super().__init__()
-        depth = 2
+        depth = 3
         encoder_kernel_size = (3,3,3)
+        input_frame_at_depth = input_frame
         # encoder_kernel_size = (3,3,1)
         decoder_kernel_size = (3,3,1)
         f_maps = [num_feature * pow(2,i) for i in range(0, depth)]
@@ -19,12 +20,18 @@ class TemporalUnet(pl.LightningModule):
         decoders = []
         
         for i in range(depth):
+            dilation = pow(1,i)
+            eff_k = self.effective_kernel_size(encoder_kernel_size[2], dilation)
+            if input_frame_at_depth <= 1:
+                dilation = 1
+                encoder_kernel_size = (3,3,1)
             if i == 0:
                 # encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = False)
-                encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(1,i), apply_pooling = False)
+                encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, dilation, apply_pooling = False)
             else:
                 # encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = True, pool_kernel = (2,2,1))
-                encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(1,i), apply_pooling = True, pool_kernel = (2,2,1))
+                encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, dilation, apply_pooling = True, pool_kernel = (2,2,1))
+            input_frame_at_depth = self.output_size(input_frame_at_depth, eff_k)
             encoders.append(encoder)
         
         reversed_f_maps = list(reversed(f_maps))
@@ -62,6 +69,11 @@ class TemporalUnet(pl.LightningModule):
 
         return torch.stack(results, dim=4)
 
+    def effective_kernel_size(self, kernel_size, dilation):
+        return kernel_size + (kernel_size-1)*dilation
+    
+    def output_size(input_size, kernel_size):
+        return input_size - kernel_size + 1
     class InputLayer(nn.Module):
         def __init__(self, in_channels, out_channels) -> None:
             super().__init__()
