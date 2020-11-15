@@ -70,7 +70,7 @@ class TemporalUnet(pl.LightningModule):
         return torch.stack(results, dim=4)
 
     def effective_kernel_size(self, kernel_size, dilation):
-        return kernel_size + (kernel_size-1)*dilation
+        return kernel_size + (kernel_size-1)*(dilation -1)
     
     def output_size(self, input_size, kernel_size):
         return input_size - kernel_size + 1

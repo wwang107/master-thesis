@@ -57,3 +57,17 @@ DATALOADER:0 TEST RESULTS
  'temporal_encoder/true positive': 48.08214141414144,
  'temporal_encoder/true positive distance': 2.7763857164186434}
 ```
+
+# version-7-Temporal Model - 3 frame - train resnet
+
+DATALOADER:0 TEST RESULTS
+```yaml
+{'input_heatmap_encoder/false negative': 54.14403966808333,
+ 'input_heatmap_encoder/false positive': 118.82210078931392,
+ 'input_heatmap_encoder/true positive': 115.8559603319167,
+ 'input_heatmap_encoder/true positive distance': 14.885247260888201,
+ 'temporal_encoder/false negative': 126.63934426229503,
+ 'temporal_encoder/false positive': 0.0,
+ 'temporal_encoder/true positive': 43.36065573770489,
+ 'temporal_encoder/true positive distance': 2.20659483240178}
+ ```
