@@ -42,12 +42,12 @@ def main(hparams):
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
     }
     trainer = pl.Trainer(gpus=hparams.gpus, 
-                         max_epochs= 20,
+                         max_epochs= 5,
                          limit_val_batches=0.2,
-                         limit_test_batches=3,
+                        #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
     
-    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
+    # trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     trainer.test(model,test_dataloaders=data_loader['valid'])
 
 

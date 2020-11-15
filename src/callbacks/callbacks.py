@@ -38,26 +38,26 @@ class LogModelHeatmaps(Callback):
             return
         self.shared_step(trainer, pl_module, batch)
 
-    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-        if (batch_idx) % self.logging_batch_interval != 0:
-            return
+    # def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+    #     if (batch_idx) % self.logging_batch_interval != 0:
+    #         return
 
-        global_step = pl_module.global_step
-        epoch = pl_module.current_epoch
-        prefix = os.path.join(self.log_dir, 'ver_' + str(trainer.logger.version))
-        os.makedirs(prefix, exist_ok=True)
-        batch_images = batch['img'].float().to(pl_module.device)
-        input_heatmap = pl_module.get_input_heatmaps(batch_images)
+    #     global_step = pl_module.global_step
+    #     epoch = pl_module.current_epoch
+    #     prefix = os.path.join(self.log_dir, 'ver_' + str(trainer.logger.version))
+    #     os.makedirs(prefix, exist_ok=True)
+    #     batch_images = batch['img'].float().to(pl_module.device)
+    #     input_heatmap = pl_module.get_input_heatmaps(batch_images)
         
-        if pl_module.temporal_encoder != None:
-            pad = (pl_module.num_frame // 2, pl_module.num_frame // 2)
-            pad_input_heatmap = pad_heatmap_with_replicate_frame(input_heatmap, pad)
-            out_heatmap = pl_module.temporal_encoder(pad_input_heatmap)
-            for f in range(0, out_heatmap.size(5),3):
-                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,out_heatmap[:,:,:,:,:, f])
-                for view, image in enumerate(visualization):
-                    file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}_frame_{}.png'.format('temporal_encoder', epoch, global_step, view, f))
-                    cv2.imwrite(str(file_name), image)
+    #     if pl_module.temporal_encoder != None:
+    #         pad = (pl_module.num_frame // 2, pl_module.num_frame // 2)
+    #         pad_input_heatmap = pad_heatmap_with_replicate_frame(input_heatmap, pad)
+    #         out_heatmap = pl_module.temporal_encoder(pad_input_heatmap)
+    #         for f in range(0, out_heatmap.size(5),3):
+    #             visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,out_heatmap[:,:,:,:,:, f])
+    #             for view, image in enumerate(visualization):
+    #                 file_name = os.path.join(prefix, '{}_test_epoch_{}_step_{}_view_{}_frame_{}.png'.format('temporal_encoder', epoch, global_step, view, f))
+    #                 cv2.imwrite(str(file_name), image)
         
 
     def shared_step(self, trainer, pl_module, batch):

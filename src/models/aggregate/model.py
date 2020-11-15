@@ -106,7 +106,7 @@ class AggregateModel(pl.LightningModule):
             return loss
         elif self.camera_view_encoder == None and self.temporal_encoder != None:
             loss_key = 'validation_step_avg_loss/temporal_encoder'
-            self.log(loss_key, loss)
+            self.log(loss_key, loss, on_epoch=True)
             return loss
         else:
             raise NotImplementedError()
@@ -139,10 +139,7 @@ class AggregateModel(pl.LightningModule):
         totol_num_test_batch = len(outputs)
         
         for stats in outputs:
-            for encoder in stats.keys():
-                fp = 0
-                fn = 0
-                tp = 0
+            for encoder in stats.keys():    
                 if stats[encoder] != None: 
                     result[encoder]['false positive'] += stats[encoder]['false positive']
                     result[encoder]['false negative'] += stats[encoder]['false negative']
