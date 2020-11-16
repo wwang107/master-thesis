@@ -137,14 +137,6 @@ class AggregateModel(pl.LightningModule):
         result = {'temporal_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.temporal_encoder != None else None, 
                   'camera_view_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.camera_view_encoder != None else None,
                   'input_heatmap_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.input_heatmap_encoder != None else None}
-        true_positive_distance_devider = {
-                  'temporal_encoder': total_num_test_batch if self.temporal_encoder != None else None, 
-                  'camera_view_encoder': total_num_test_batch if self.camera_view_encoder != None else None,
-                  'input_heatmap_encoder': total_num_test_batch if self.input_heatmap_encoder != None else None}
-        
-        
-        
-        
         
         for stats in outputs:
             for encoder in stats.keys():    
@@ -152,17 +144,14 @@ class AggregateModel(pl.LightningModule):
                     result[encoder]['false positive'] += stats[encoder]['false positive']
                     result[encoder]['false negative'] += stats[encoder]['false negative']
                     result[encoder]['true positive'] += stats[encoder]['true positive']
-                    if stats[encoder]['true positive distance'] == None:
-                        true_positive_distance_devider[encoder] -= 1
-                    else:
-                        result[encoder]['true positive distance'] += stats[encoder]['true positive distance']
+                    result[encoder]['true positive distance'] += stats[encoder]['true positive distance']
 
         for encoder in result:
             if result[encoder] != None:
                 self.log('{}/false positive'.format(encoder), result[encoder]['false positive']/total_num_test_batch)
                 self.log('{}/true positive'.format(encoder), result[encoder]['true positive']/total_num_test_batch)
                 self.log('{}/false negative'.format(encoder), result[encoder]['false negative']/total_num_test_batch)
-                self.log('{}/true positive distance'.format(encoder), result[encoder]['true positive distance']/true_positive_distance_devider[encoder])       
+                self.log('{}/true positive distance'.format(encoder), result[encoder]['true positive distance']/total_num_test_batch)       
 
         
 
@@ -301,6 +290,7 @@ class AggregateModel(pl.LightningModule):
         num_frame = batch_heatmaps.size(5)
         num_camera = batch_heatmaps.size(4)
         num_batch_size = batch_heatmaps.size(0)
+        total_iter = num_frame*num_camera 
 
         result = {'false negative':0, 'false positive':0, 'true positive':0, 'true positive distance':0}
         for k in range(num_camera):
@@ -310,11 +300,14 @@ class AggregateModel(pl.LightningModule):
                 result['false negative'] += confusion_metrics['false negative']['num']
                 result['false positive'] += confusion_metrics['false positive']['num']
                 result['true positive'] += confusion_metrics['true positive']['num']
-                result['true positive distance'] += confusion_metrics['distance']
+                if confusion_metrics['distance'] == None:
+                    total_iter -= 1
+                else:
+                    result['true positive distance'] += confusion_metrics['distance']
         result['false negative'] = result['false negative']/num_batch_size/num_frame/num_camera 
         result['false positive'] = result['false positive']/num_batch_size/num_frame/num_camera
         result['true positive'] = result['true positive']/num_batch_size/num_frame/num_camera
-        result['true positive distance'] = result['true positive distance']/num_frame/num_camera
+        result['true positive distance'] = result['true positive distance']/total_iter
         
         return result
         # middle_frame = self.num_frame//2
