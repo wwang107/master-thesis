@@ -134,9 +134,9 @@ class AggregateModel(pl.LightningModule):
     
     def test_epoch_end(self, outputs) -> None:
         total_num_test_batch = len(outputs)
-        distance_devider = {'temporal_encoder': 0 if self.temporal_encoder != None else None, 
-                  'camera_view_encoder': 0 if self.camera_view_encoder != None else None,
-                  'input_heatmap_encoder': 0 if self.input_heatmap_encoder != None else None} 
+        distance_devider = {'temporal_encoder': total_num_test_batch if self.temporal_encoder != None else None, 
+                  'camera_view_encoder': total_num_test_batch if self.camera_view_encoder != None else None,
+                  'input_heatmap_encoder': total_num_test_batch if self.input_heatmap_encoder != None else None} 
         result = {'temporal_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.temporal_encoder != None else None, 
                   'camera_view_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.camera_view_encoder != None else None,
                   'input_heatmap_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.input_heatmap_encoder != None else None}
@@ -157,7 +157,10 @@ class AggregateModel(pl.LightningModule):
                 self.log('{}/false positive'.format(encoder), result[encoder]['false positive']/total_num_test_batch)
                 self.log('{}/true positive'.format(encoder), result[encoder]['true positive']/total_num_test_batch)
                 self.log('{}/false negative'.format(encoder), result[encoder]['false negative']/total_num_test_batch)
-                self.log('{}/true positive distance'.format(encoder), result[encoder]['true positive distance']/distance_devider[encoder])       
+                if distance_devider[encoder] == 0:
+                    self.log('{}/true positive distance'.format(encoder), None)
+                else:
+                    self.log('{}/true positive distance'.format(encoder), result[encoder]['true positive distance']/distance_devider[encoder])       
 
         
 
