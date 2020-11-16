@@ -10,7 +10,7 @@ class TemporalUnet(pl.LightningModule):
     '''
     def __init__(self, in_channels: int, out_channels: int,num_feature:int, input_frame:int) -> None:
         super().__init__()
-        depth = 3
+        depth = 4
         encoder_kernel_size = (3,3,3)
         input_frame_at_depth = input_frame
         # encoder_kernel_size = (3,3,1)
