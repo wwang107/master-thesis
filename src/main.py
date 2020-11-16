@@ -37,10 +37,10 @@ def main(hparams):
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     
-    # data_loader = {
-    #     'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
-    #     'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
-    # }
+    data_loader = {
+        'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
+        'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
+    }
     trainer = pl.Trainer(gpus=hparams.gpus, 
                          max_epochs= 5,
                          limit_val_batches=0.2,
