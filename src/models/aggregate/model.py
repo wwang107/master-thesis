@@ -134,6 +134,9 @@ class AggregateModel(pl.LightningModule):
     
     def test_epoch_end(self, outputs) -> None:
         total_num_test_batch = len(outputs)
+        distance_devider = {'temporal_encoder': 0 if self.temporal_encoder != None else None, 
+                  'camera_view_encoder': 0 if self.camera_view_encoder != None else None,
+                  'input_heatmap_encoder': 0 if self.input_heatmap_encoder != None else None} 
         result = {'temporal_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.temporal_encoder != None else None, 
                   'camera_view_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.camera_view_encoder != None else None,
                   'input_heatmap_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.input_heatmap_encoder != None else None}
@@ -144,14 +147,17 @@ class AggregateModel(pl.LightningModule):
                     result[encoder]['false positive'] += stats[encoder]['false positive']
                     result[encoder]['false negative'] += stats[encoder]['false negative']
                     result[encoder]['true positive'] += stats[encoder]['true positive']
-                    result[encoder]['true positive distance'] += stats[encoder]['true positive distance']
+                    if stats[encoder]['true positive distance'] == None:
+                        distance_devider[encoder] -= 1
+                    else:
+                        result[encoder]['true positive distance'] += stats[encoder]['true positive distance']
 
         for encoder in result:
             if result[encoder] != None:
                 self.log('{}/false positive'.format(encoder), result[encoder]['false positive']/total_num_test_batch)
                 self.log('{}/true positive'.format(encoder), result[encoder]['true positive']/total_num_test_batch)
                 self.log('{}/false negative'.format(encoder), result[encoder]['false negative']/total_num_test_batch)
-                self.log('{}/true positive distance'.format(encoder), result[encoder]['true positive distance']/total_num_test_batch)       
+                self.log('{}/true positive distance'.format(encoder), result[encoder]['true positive distance']/distance_devider[encoder])       
 
         
 
@@ -295,7 +301,7 @@ class AggregateModel(pl.LightningModule):
         result = {'false negative':0, 'false positive':0, 'true positive':0, 'true positive distance':0}
         for k in range(num_camera):
             for f in range(num_frame):
-                batch_detections = find_keypoints_from_heatmaps(batch_heatmaps[:, :, :, :, k, f], threshold=0)
+                batch_detections = find_keypoints_from_heatmaps(batch_heatmaps[:, :, :, :, k, f], threshold=0.5)
                 confusion_metrics = match_detected_groundtruth_keypoint(batch_gt_keypoint[:, :, :, :, k, f], batch_detections)
                 result['false negative'] += confusion_metrics['false negative']['num']
                 result['false positive'] += confusion_metrics['false positive']['num']
@@ -307,8 +313,10 @@ class AggregateModel(pl.LightningModule):
         result['false negative'] = result['false negative']/num_batch_size/num_frame/num_camera 
         result['false positive'] = result['false positive']/num_batch_size/num_frame/num_camera
         result['true positive'] = result['true positive']/num_batch_size/num_frame/num_camera
-        result['true positive distance'] = result['true positive distance']/total_iter
-        
+        if total_iter == 0:
+            result['true positive distance'] = None
+        else:
+            result['true positive distance'] = result['true positive distance']/total_iter
         return result
         # middle_frame = self.num_frame//2
         # i_results = []
