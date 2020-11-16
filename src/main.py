@@ -46,9 +46,9 @@ def main(hparams):
                          limit_val_batches=0.2,
                         #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
-    # trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
-    state_dict = torch.load('lightning_logs/version_0/checkpoints/epoch=3.ckpt')['state_dict']
-    model.load_state_dict(state_dict)
+    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
+    # state_dict = torch.load('lightning_logs/version_0/checkpoints/epoch=3.ckpt')['state_dict']
+    # model.load_state_dict(state_dict)
     trainer.test(model, test_dataloaders=data_loader['valid'])
 
 
