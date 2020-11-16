@@ -48,7 +48,7 @@ def main(hparams):
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
     # trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     # trainer.test(model,test_dataloaders=data_loader['valid'])
-    model.load_from_checkpoint('lightning_logs/version_16/checkpoints/epoch=2.ckpt')
+    model = model.load_from_checkpoint('lightning_logs/version_16/checkpoints/epoch=2.ckpt')
     trainer.test(model, test_dataloaders=data_loader['valid'])
 
 
