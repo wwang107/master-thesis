@@ -90,4 +90,4 @@ DATALOADER:0 TEST RESULTS
 
 # version-9-Temporal Model - 3 frame - fix resnet
 
-# version-10-Temporal Model -removed batch norm at output - 3 frame - fix resnet
+# version-10-Temporal Model -removed no batch norm at output - 3 frame - fix resnet
