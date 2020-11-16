@@ -15,7 +15,7 @@ def load_weight(model, state_dict):
     return model
 
 def weighted_mse_loss(input, target, weight):
-    return torch.mean(weight * (input - target) ** 2)
+    return torch.mean(weight * (input - target) ** 2) * 10000
 
 
 def main(hparams):
