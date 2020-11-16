@@ -91,3 +91,13 @@ DATALOADER:0 TEST RESULTS
 # version-9-Temporal Model - 3 frame - fix resnet
 
 # version-10-Temporal Model -removed no batch norm at output - 3 frame - fix resnet
+```yaml
+{'input_heatmap_encoder/false negative': 155.11627200971478,
+ 'input_heatmap_encoder/false positive': 0.0,
+ 'input_heatmap_encoder/true positive': 14.883727990285369,
+ 'input_heatmap_encoder/true positive distance': 38.43949741496634,
+ 'temporal_encoder/false negative': 133.47269783444645,
+ 'temporal_encoder/false positive': 0.0,
+ 'temporal_encoder/true positive': 36.527302165553536,
+ 'temporal_encoder/true positive distance': 38.76044630868471}
+```

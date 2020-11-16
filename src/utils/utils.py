@@ -107,7 +107,7 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
                 
             assert result['false negative']['num'] + result['true positive']['num'] == total_gt_joints
     
-    result['distance'] = tp_dist/tp_count if tp_count > 0 else None
+    result['distance'] = tp_dist
     result['false positive']['points'] = fp
     result['false negative']['points'] = fn
     result['true positive']['points'] = tp

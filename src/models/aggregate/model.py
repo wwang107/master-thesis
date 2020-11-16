@@ -203,103 +203,10 @@ class AggregateModel(pl.LightningModule):
     
             return c_loss + t_loss
 
-    # def validation_step(self, batch, batch_idx):
-    #     stats = {'temporal_encoder': None,
-    #              'camera_view_encoder': None, 'input_heatmap_encoder': None}
-
-    #     batch_imgs = batch['img'].float()
-    #     batch_gt_hm = batch['heatmap']
-    #     batch_gt_keypoint = batch['keypoint2d']
-    #     only_use_middle_frame = True if self.temporal_encoder != None else False
-    #     middle_frame = self.num_frame // 2
-
-    #     input_heatmaps = self.get_input_heatmaps(batch_imgs)
-    #     i_results, t_results, c_results = self.calculate_confusion_table(
-    #         input_heatmaps, batch_gt_keypoint, only_use_middle_frame)
-    #     stats['input_heatmap_encoder'] = self.get_average_confusion_table(
-    #         i_results)
-
-    #     if self.temporal_encoder == None and self.camera_view_encoder == None:
-    #         raise NotImplementedError()
-
-    #     if self.temporal_encoder != None and self.camera_view_encoder == None:
-    #         temporal_heatmaps = self.get_temporal_heatmap(input_heatmaps)
-    #         weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
-    #             1.0 + (batch_gt_hm[:, :, :, :, :, middle_frame] <= 0.1) * 0.1
-
-    #         t_loss = self.loss(
-    #             temporal_heatmaps, batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-
-    #         stats['temporal_encoder'] = self.get_average_confusion_table(
-    #             t_results)
-            
-    #         self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
-    #         loss = t_loss
-
-    #     elif self.camera_view_encoder != None and self.temporal_encoder == None:
-    #         camera_view_heatmaps = self.get_camera_heatmap(input_heatmaps)
-    #         if only_use_middle_frame:
-    #             weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
-    #                 1.0 + (batch_gt_hm[:, :, :, :, :,
-    #                                    middle_frame] <= 0.1) * 0.1
-    #             c_loss = self.loss(
-    #                 camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-    #         else:
-    #             weight = (batch_gt_hm > 0.1) * \
-    #                 1.0 + (batch_gt_hm <= 0.1) * 0.1
-    #             c_loss = self.loss(
-    #                 camera_view_heatmaps, batch_gt_hm, weight)
-    #         stats['camera_view_encoder'] = self.get_average_confusion_table(
-    #             c_results)
-    #         self.log('avg_validation/camera_view_encoder', c_loss, on_epoch=True)
-    #         loss = c_loss
-
-    #     elif self.camera_view_encoder != None and self.temporal_encoder != None:
-    #         temporal_heatmaps = self.get_temporal_heatmap(input_heatmaps)
-    #         camera_view_heatmaps = self.get_camera_heatmap(input_heatmaps)
-    #         weight = (batch_gt_hm[:, :, :, :, :, middle_frame] > 0.1) * \
-    #             1.0 + (batch_gt_hm[:, :, :, :, :, middle_frame] <= 0.1) * 0.1
-
-    #         t_loss = self.loss(
-    #             temporal_heatmaps, batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-    #         c_loss = self.loss(
-    #             camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_hm[:, :, :, :, :, middle_frame], weight)
-    #         stats['temporal_encoder'] = self.get_average_confusion_table(
-    #             t_results)
-    #         stats['camera_view_encoder'] = self.get_average_confusion_table(
-    #             c_results)
-
-    #         self.log('avg_validation/temporal_encoder', t_loss, on_epoch=True)
-    #         self.log('avg_validation/camera_view_encoder',
-    #                  c_loss, on_epoch=True)
-    #         loss = t_loss + c_loss
-
-    #     return {'loss':loss, 'stats': stats}
-
-    # def get_average_confusion_table(self, confusion_results):
-    #     total = len(confusion_results)
-    #     stats = {'false positive': 0, 'true positive': 0, 'false negative': 0}
-    #     dist = 0.0
-    #     distCount = 0
-    #     for result in confusion_results:
-    #         for key in stats.keys():
-    #             stats[key] += result[key]['num']
-    #         if result['distance'] != None:
-    #             dist += result['distance']
-    #             distCount += 1
-    #     if distCount != 0:
-    #         stats['distance'] = dist / distCount
-    #     else:
-    #         stats['distance'] = 99999
-    #     for key in stats.keys():
-    #         stats[key] = stats[key] / total
-    #     return stats
-
     def calculate_confusion_metrics(self, batch_heatmaps, batch_gt_keypoint):
         num_frame = batch_heatmaps.size(5)
         num_camera = batch_heatmaps.size(4)
         num_batch_size = batch_heatmaps.size(0)
-        total_iter = num_frame*num_camera 
 
         result = {'false negative':0, 'false positive':0, 'true positive':0, 'true positive distance':0}
         for k in range(num_camera):
@@ -309,60 +216,12 @@ class AggregateModel(pl.LightningModule):
                 result['false negative'] += confusion_metrics['false negative']['num']
                 result['false positive'] += confusion_metrics['false positive']['num']
                 result['true positive'] += confusion_metrics['true positive']['num']
-                if confusion_metrics['distance'] == None:
-                    total_iter -= 1
-                else:
-                    result['true positive distance'] += confusion_metrics['distance']
+                result['true positive distance'] += confusion_metrics['distance']
+        result['true positive distance'] = result['true positive distance']/result['true positive'] if result['true positive']>0 else None 
         result['false negative'] = result['false negative']/num_batch_size/num_frame/num_camera 
         result['false positive'] = result['false positive']/num_batch_size/num_frame/num_camera
         result['true positive'] = result['true positive']/num_batch_size/num_frame/num_camera
-        if total_iter == 0:
-            result['true positive distance'] = None
-        else:
-            result['true positive distance'] = result['true positive distance']/total_iter
         return result
-        # middle_frame = self.num_frame//2
-        # i_results = []
-        # t_results = []
-        # c_results = []
-
-        # for k in range(self.num_view):
-        #     if only_use_middle_frame:
-        #         i_detected_keypoint = find_keypoints_from_heatmaps(
-        #             input_heatmaps[:, :, :, :, k, middle_frame], threshold=0)
-        #         i_results.append(match_detected_groundtruth_keypoint(
-        #             batch_gt_keypoint[:, :, :, :, k, middle_frame], i_detected_keypoint, 1))
-        #     else:
-        #         for f in range(self.num_frame):
-        #             i_detected_keypoint = find_keypoints_from_heatmaps(
-        #                 input_heatmaps[:, :, :, :, k, f], threshold=0)
-        #             i_results.append(match_detected_groundtruth_keypoint(
-        #                 batch_gt_keypoint[:, :, :, :, k, f], i_detected_keypoint, 1))
-
-        # if self.temporal_encoder != None:
-        #     temporal_heatmaps = self.get_temporal_heatmap(input_heatmaps)
-        #     for k in range(self.num_view):
-        #         t_detected_keypoint = find_keypoints_from_heatmaps(
-        #             temporal_heatmaps[:, :, :, :, k], threshold=0.0)
-        #         t_results.append(match_detected_groundtruth_keypoint(
-        #             batch_gt_keypoint[:, :, :, :, k, middle_frame], t_detected_keypoint, 1))
-
-        # if self.camera_view_encoder != None:
-        #     camera_view_heatmaps = self.get_camera_heatmap(input_heatmaps)
-        #     for k in range(self.num_view):
-        #         if only_use_middle_frame:
-        #             c_detected_keypoint = find_keypoints_from_heatmaps(
-        #                 camera_view_heatmaps[:, :, :, :, k, middle_frame], threshold=0.0)
-        #             c_results.append(match_detected_groundtruth_keypoint(
-        #                 batch_gt_keypoint[:, :, :, :, k, middle_frame], c_detected_keypoint, 1))
-        #         else:
-        #             for f in range(self.num_frame):
-        #                 c_detected_keypoint = find_keypoints_from_heatmaps(
-        #                     camera_view_heatmaps[:, :, :, :, k, f], threshold=0)
-        #                 c_results.append(match_detected_groundtruth_keypoint(
-        #                     batch_gt_keypoint[:, :, :, :, k, f], c_detected_keypoint, 1))
-
-        return i_results, t_results, c_results
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters())

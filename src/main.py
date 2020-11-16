@@ -37,18 +37,19 @@ def main(hparams):
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     
-    data_loader = {
-        'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
-        'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
-    }
+    # data_loader = {
+    #     'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
+    #     'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
+    # }
     trainer = pl.Trainer(gpus=hparams.gpus, 
                          max_epochs= 5,
                          limit_val_batches=0.2,
                         #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
-    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
-    # trainer.test(model,test_dataloaders=data_loader['valid'])
-    trainer.test(ckpt_path='lightning_logs/version_16/checkpoints/epoch=2.ckpt', test_dataloaders=data_loader['valid'])
+    # trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
+    state_dict = torch.load('/home/wei/Desktop/cvg25/lightning_logs/version_16/checkpoints/epoch=2.ckpt')['state_dict']
+    model.load_state_dict(state_dict)
+    trainer.test(model, test_dataloaders=data_loader['valid'])
 
 
 if __name__ == "__main__":
