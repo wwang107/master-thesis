@@ -69,8 +69,8 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
     for i in range(num_batch_size):
         for j, detected_joints in enumerate(batch_detected_keypoints[i]):
             gt_joints = batch_gt_keypoints[i, :, j, 0:2]
-            # visible = batch_gt_keypoints[i, :, j, 2] > 0
-            # gt_joints = batch_gt_keypoints[i, :, j, 0:2][visible]
+            visible = batch_gt_keypoints[i, :, j, 2] > 0
+            gt_joints = batch_gt_keypoints[i, :, j, 0:2][visible]
             total_gt_joints += gt_joints.shape[0]
             if len(detected_joints) > 0 and gt_joints.shape[0] == 0:
                 fp[i][j].append(detected_joints)
