@@ -3,7 +3,7 @@ from torch import nn
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: Tuple, dilation:int) -> None:
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: Tuple, dilation:int, use_batch_norm: bool= True) -> None:
         super(ResidualBlock, self).__init__()
         padding_mode = 'zeros'
         padding = (kernel_size[0]//2, kernel_size[1]//2, kernel_size[2]//2)
@@ -12,22 +12,39 @@ class ResidualBlock(nn.Module):
                                kernel_size=kernel_size,
                                padding=padding,
                                padding_mode=padding_mode)
-        self.conv2 = nn.Sequential(
+        
+        if use_batch_norm:
+            self.conv2 = nn.Sequential(
+                nn.Conv3d(out_channels, out_channels,
+                        kernel_size=kernel_size,
+                        padding=padding,
+                        padding_mode=padding_mode),
+                nn.BatchNorm3d(out_channels),
+                nn.ReLU()
+            )
+            self.conv3 = nn.Sequential(
+                nn.Conv3d(out_channels, out_channels,
+                        kernel_size=kernel_size,
+                        padding=padding,
+                        padding_mode=padding_mode),
+                nn.BatchNorm3d(out_channels),
+                nn.ReLU()
+            )
+        else:
+            self.conv2 = nn.Sequential(
             nn.Conv3d(out_channels, out_channels,
-                      kernel_size=kernel_size,
-                      padding=padding,
-                      padding_mode=padding_mode),
-            nn.BatchNorm3d(out_channels),
+                    kernel_size=kernel_size,
+                    padding=padding,
+                    padding_mode=padding_mode),
             nn.ReLU()
-        )
-        self.conv3 = nn.Sequential(
-            nn.Conv3d(out_channels, out_channels,
-                      kernel_size=kernel_size,
-                      padding=padding,
-                      padding_mode=padding_mode),
-            nn.BatchNorm3d(out_channels),
-            nn.ReLU()
-        )
+            )
+            self.conv3 = nn.Sequential(
+                nn.Conv3d(out_channels, out_channels,
+                        kernel_size=kernel_size,
+                        padding=padding,
+                        padding_mode=padding_mode),
+                nn.ReLU()
+            )
 
     def forward(self, x):
         residual = self.conv1(x)

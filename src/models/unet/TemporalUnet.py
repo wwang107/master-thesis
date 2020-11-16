@@ -42,7 +42,7 @@ class TemporalUnet(pl.LightningModule):
 
         self.encoders = nn.ModuleList(encoders)
         self.decoders = nn.ModuleList(decoders)
-        self.last_conv = ResidualBlock(f_maps[0], out_channels, (3,3,1), 1)
+        self.last_conv = ResidualBlock(f_maps[0], out_channels, (3,3,1), 1, use_batch_norm=False)
     
     def forward(self, x):
         '''
