@@ -48,8 +48,8 @@ def main(hparams):
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
     # trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     state_dict = torch.load('lightning_logs/version_0/checkpoints/epoch=3.ckpt')['state_dict']
-    model.load_state_dict(state_dict)
-    trainer.test(test_dataloaders=data_loader['valid'])
+    model = model.load_state_dict(state_dict)
+    trainer.test(model, test_dataloaders=data_loader['valid'])
 
 
 if __name__ == "__main__":
