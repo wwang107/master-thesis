@@ -116,6 +116,7 @@ class AggregateModel(pl.LightningModule):
         batch_gt_keypoint = batch['keypoint2d']
         stats = {'temporal_encoder': None, 'camera_view_encoder': None, 'input_heatmap_encoder': None}
         
+        self.input_heatmap_encoder = self.input_heatmap_encoder.train()
         input_heatmaps = self.get_input_heatmaps(batch_imgs)
         input_metric = self.calculate_confusion_metrics(input_heatmaps, batch_gt_keypoint)
         stats['input_heatmap_encoder'] = input_metric
@@ -125,6 +126,7 @@ class AggregateModel(pl.LightningModule):
             stats['camera_view_encoder'] = camera_encoder_metric
 
         if self.temporal_encoder != None:
+            self.temporal_encoder = self.temporal_encoder.train()
             pad = (self.num_frame // 2, self.num_frame // 2)
             padded_input_heatmaps = pad_heatmap_with_replicate_frame(input_heatmaps, pad)
             out_heatmap = self.temporal_encoder(padded_input_heatmaps)
