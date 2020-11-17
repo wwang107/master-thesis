@@ -41,7 +41,8 @@ def main(hparams):
         'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
     }
-    trainer = pl.Trainer(gpus=hparams.gpus, 
+    trainer = pl.Trainer(gpus=hparams.gpus,
+                         resume_from_checkpoint='some/path/to/my_checkpoint.ckpt',
                          max_epochs= 20,
                          limit_val_batches=0.2,
                         #  limit_test_batches=3,
@@ -49,7 +50,8 @@ def main(hparams):
     # trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     state_dict = torch.load('lightning_logs/version_1/checkpoints/epoch=4.ckpt')['state_dict']
     model.load_state_dict(state_dict)
-    trainer.test(model, test_dataloaders=data_loader['valid'])
+    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
+    trainer.test(test_dataloaders=data_loader['valid'])
 
 
 if __name__ == "__main__":
