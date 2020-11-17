@@ -42,7 +42,6 @@ def main(hparams):
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
     }
     trainer = pl.Trainer(gpus=hparams.gpus,
-                         resume_from_checkpoint='lightning_logs/version_1/checkpoints/epoch=4.ckpt',
                          max_epochs= 20,
                          limit_val_batches=0.2,
                         #  limit_test_batches=3,
