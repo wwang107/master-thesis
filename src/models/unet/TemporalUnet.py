@@ -20,7 +20,7 @@ class TemporalUnet(pl.LightningModule):
         decoders = []
         
         for i in range(depth):
-            dilation = pow(2,i)
+            dilation = pow(1,i)
             eff_k = self.effective_kernel_size(encoder_kernel_size[2], dilation)
             if input_frame_at_depth <= 1:
                 dilation = 1
