@@ -1,4 +1,91 @@
-# version-4-Temporal Model - 15 frame - train resnet
+
+# W/O training input encoder
+
+### Temporal Encoder
+### version - 0 - 1 frame
+
+- params: 3 M
+- Type: Unet
+- depth: 4
+
+```javascript
+{'input_heatmap_encoder/false negative': 85.4259394102841,
+ 'input_heatmap_encoder/false positive': 0.0008899676375404531,
+ 'input_heatmap_encoder/true positive': 14.479944264653003,
+ 'input_heatmap_encoder/true positive distance': 34.00602625749318,
+ 'temporal_encoder/false negative': 54.41196961524632,
+ 'temporal_encoder/false positive': 0.02131877022653724,
+ 'temporal_encoder/true positive': 45.49391405969074,
+ 'temporal_encoder/true positive distance': 33.69700338313878}
+```
+
+### version - 1&3 - 3 frame 
+
+training with 3 epoch and 12 epoch have same result
+
+- params: 3 M
+- Type: Unet
+- depth: 4
+
+```javascript
+{'input_heatmap_encoder/false negative': 86.26990487755516,
+ 'input_heatmap_encoder/false positive': 0.0012952843553936451,
+ 'input_heatmap_encoder/true positive': 14.882432705929977,
+ 'input_heatmap_encoder/true positive distance': 40.069497334451405,
+ 'temporal_encoder/false negative': 51.626431896377284,
+ 'temporal_encoder/false positive': 0.10232746407609826,
+ 'temporal_encoder/true positive': 49.52590568710784,
+ 'temporal_encoder/true positive distance': 40.661609002917416}
+```
+
+### version - 5 - 5 frame
+
+- params: 3 M
+- Type: Unet
+- depth: 4
+
+```javascript
+{'input_heatmap_encoder/false negative': 86.65595959595969,
+ 'input_heatmap_encoder/false positive': 0.00101010101010101,
+ 'input_heatmap_encoder/true positive': 14.736525252525249,
+ 'input_heatmap_encoder/true positive distance': 41.24996667073625,
+ 'temporal_encoder/false negative': 57.02307070707068,
+ 'temporal_encoder/false positive': 0.03309090909090912,
+ 'temporal_encoder/true positive': 44.36941414141414,
+ 'temporal_encoder/true positive distance': 41.7528729063837}
+```
+
+### version - 6 - 7 frame
+
+- params: 4 M
+- Type: Unet
+- depth: 4
+
+```javascript
+{'input_heatmap_encoder/false negative': 86.84891041162228,
+ 'input_heatmap_encoder/false positive': 0.0008878127522195318,
+ 'input_heatmap_encoder/true positive': 14.664689265536731,
+ 'input_heatmap_encoder/true positive distance': 41.758735730812184,
+ 'temporal_encoder/false negative': 51.07816787732038,
+ 'temporal_encoder/false positive': 0.05726392251815972,
+ 'temporal_encoder/true positive': 50.43543179983856,
+ 'temporal_encoder/true positive distance': 42.68813669026329}
+
+```
+
+### version - 6 - 9 frame
+
+- params: 4 M
+- Type: Unet
+- depth: 4
+
+```javascript
+{}
+
+```
+
+
+<!-- # version-4-Temporal Model - 15 frame - train resnet
 
 
 num_params = 2 M
@@ -99,5 +186,5 @@ DATALOADER:0 TEST RESULTS
  'temporal_encoder/false negative': 133.47269783444645,
  'temporal_encoder/false positive': 0.0,
  'temporal_encoder/true positive': 36.527302165553536,
- 'temporal_encoder/true positive distance': 38.76044630868471}
+ 'temporal_encoder/true positive distance': 38.76044630868471} -->
 ```
