@@ -32,7 +32,7 @@ class BaselineMultiViewModel(pl.LightningModule):
             decoders.append(decoder)
 
         self.decoders = nn.ModuleList(decoders)
-        self.last_conv = ResidualBlock(f_maps[0], out_channels, kernel_size, dilation=1)
+        self.last_conv = ResidualBlock(f_maps[0], out_channels, kernel_size, dilation=1, use_batch_norm=False)
 
     def forward(self, x):
         results = []
