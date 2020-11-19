@@ -39,8 +39,7 @@ def find_keypoints_from_heatmaps(batch_heatmaps: torch.Tensor,
                 keypoints[b][j] = np.array(keypoints[b][j])
     return keypoints
 
-
-def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_detected_keypoints: np.ndarray, thresh: np.float = np.float('inf')):
+def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_detected_keypoints: List[List[List]], thresh: np.float = np.float('inf')):
     """
     gt_keypoints: [batch_size, num_max_person, num_joints, 2d_coordinates_and_visibility], Note that 2d_coordinates_and_visibility has order of yxv
     detected_keypoints: [batch_size, num_joints, num_keypoints], Note that the order of 2d_coordinate is yx
@@ -66,6 +65,7 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
     tp_dist = 0.0
     tp_count = 0
     total_gt_joints = 0
+
     for i in range(num_batch_size):
         for j, detected_joints in enumerate(batch_detected_keypoints[i]):
             gt_joints = batch_gt_keypoints[i, :, j, 0:2]
@@ -78,6 +78,8 @@ def match_detected_groundtruth_keypoint(batch_gt_keypoints: torch.Tensor, batch_
             elif len(detected_joints) == 0 and gt_joints.shape[0] > 0:
                 fn[i][j].append(gt_joints)
                 result['false negative']['num'] += gt_joints.shape[0]
+            elif len(detected_joints) == 0 and gt_joints.shape[0] == 0:
+                continue
             else:
                 fn_inds = np.ones(gt_joints.shape[0], dtype=np.bool)
                 tp_inds = np.zeros(detected_joints.shape[0], dtype=np.bool)
