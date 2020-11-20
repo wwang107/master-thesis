@@ -13,7 +13,6 @@ class TemporalUnet(pl.LightningModule):
         depth = 4
         encoder_kernel_size = (3,3,3)
         input_frame_at_depth = input_frame
-        # encoder_kernel_size = (3,3,1)
         decoder_kernel_size = (3,3,1)
         f_maps = [num_feature * pow(2,i) for i in range(0, depth)]
         encoders = []
@@ -26,10 +25,8 @@ class TemporalUnet(pl.LightningModule):
                 dilation = 1
                 encoder_kernel_size = (3,3,1)
             if i == 0:
-                # encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = False)
                 encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, dilation, apply_pooling = False)
             else:
-                # encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = True, pool_kernel = (2,2,1))
                 encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, dilation, apply_pooling = True, pool_kernel = (2,2,1))
             input_frame_at_depth = self.output_size(input_frame_at_depth, eff_k)
             encoders.append(encoder)
