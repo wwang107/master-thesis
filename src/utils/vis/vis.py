@@ -59,7 +59,7 @@ def add_direct_keypoints(image, keypoints):
     return image
 
 
-def save_batch_joint_and_keypoint(file_name, batch_image, batch_joints, batch_keypoints, scale=1, dataset='COCO'):
+def save_batch_joint_and_keypoint(file_name,batch_image, batch_joints, batch_keypoints, scale=1, dataset='COCO'):
     '''
     batch_image: [batch_size, channel, height, width]
     batch_joints: [batch_size, num_joints, 3],
@@ -264,6 +264,9 @@ def save_batch_image_with_joints_multi(batch_image,
                     joint[0] = x * width + padding + joint[0]
                     joint[1] = y * height + padding + joint[1]
                     if joint_vis[0]:
+                        cv2.circle(ndarr, (int(joint[0]), int(joint[1])), 2,
+                                   [0, 255, 255], 2)
+                    else:
                         cv2.circle(ndarr, (int(joint[0]), int(joint[1])), 2,
                                    [0, 255, 255], 2)
             k = k + 1

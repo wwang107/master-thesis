@@ -3,9 +3,8 @@ import os
 import torch
 from pytorch_lightning import Callback
 from utils.vis.vis import save_batch_multi_view_with_heatmap
-from utils.utils import pad_heatmap_with_replicate_frame, pad_image_with_replicate_frame
-
-
+from utils.utils import pad_heatmap_with_replicate_frame, find_keypoints_from_heatmaps, match_detected_groundtruth_keypoint
+from utils.vis.vis import save_keypoint_detection
 class LogConfusionTable(Callback):
    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
         confusion_table = outputs['stats']
@@ -27,6 +26,7 @@ class LogConfusionTable(Callback):
         pl_module.logger.experiment.add_scalars("false positive", fp, global_step=pl_module.global_step)
         pl_module.logger.experiment.add_scalars("ture positive distance", tp_dist, global_step=pl_module.global_step)
 
+
 class LogModelHeatmaps(Callback):
     def __init__(self, log_dir:str, num_frame:int, logging_batch_interval: int= 20):
         self.logging_batch_interval = logging_batch_interval
@@ -47,6 +47,8 @@ class LogModelHeatmaps(Callback):
         prefix = os.path.join(self.log_dir, 'ver_' + str(trainer.logger.version))
         os.makedirs(prefix, exist_ok=True)
         batch_images = batch['img'].float().to(pl_module.device)
+        batch_gt_keypoint = batch['keypoint2d']
+
         input_heatmap = pl_module.get_input_heatmaps(batch_images)
 
         for f in range(0, input_heatmap.size(5),3):
@@ -64,7 +66,24 @@ class LogModelHeatmaps(Callback):
                 for view, image in enumerate(visualization):
                     file_name = os.path.join(prefix, '{}_test_epoch_{}_step_{}_view_{}_frame_{}.png'.format('temporal_encoder', epoch, global_step, view, f))
                     cv2.imwrite(str(file_name), image)
+
+            file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('temporal_encoder', epoch, global_step)
+            file_name = os.path.join(prefix, file_name)
+            self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
         
+    def visualize_confusion_metrics(self, file_name, batch_images, batch_heatmaps, batch_gt_keypoint):
+        frame = 0
+        num_view = batch_heatmaps.size(4)
+        for v in range(num_view):
+            batch_detections = find_keypoints_from_heatmaps(batch_heatmaps[:, :, :, :, v, frame], threshold=0.5)
+            confusion_metrics = match_detected_groundtruth_keypoint(batch_gt_keypoint[:, :, :, :, v, frame], batch_detections)
+            img = save_keypoint_detection(batch_images[:, :, :, :, v, frame], 
+                                        batch_heatmaps[:, :, :, :, v, frame], 
+                                        confusion_metrics['false positive']['points'], 
+                                        confusion_metrics['false negative']['points'],
+                                        confusion_metrics['true positive']['points'])
+            
+            cv2.imwrite('{}_view_{}.png'.format(file_name, v), img)
 
     def shared_step(self, trainer, pl_module, batch):
         global_step = pl_module.global_step
