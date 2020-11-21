@@ -71,6 +71,18 @@ class LogModelHeatmaps(Callback):
             file_name = os.path.join(prefix, file_name)
             self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
         
+        if pl_module.camera_view_encoder != None:
+            out_heatmap = pl_module.camera_view_encoder(input_heatmap)
+            for f in range(0, out_heatmap.size(5),3):
+                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,out_heatmap[:,:,:,:,:, f])
+                for view, image in enumerate(visualization):
+                    file_name = os.path.join(prefix, '{}_test_epoch_{}_step_{}_view_{}_frame_{}.png'.format('camera_view_encoder', epoch, global_step, view, f))
+                    cv2.imwrite(str(file_name), image)
+
+            file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('camera_view_encoder', epoch, global_step)
+            file_name = os.path.join(prefix, file_name)
+            self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
+        
     def visualize_confusion_metrics(self, file_name, batch_images, batch_heatmaps, batch_gt_keypoint):
         frame = 0
         num_view = batch_heatmaps.size(4)
