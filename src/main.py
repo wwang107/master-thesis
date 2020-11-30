@@ -66,8 +66,7 @@ def main(hparams):
     }
     trainer = pl.Trainer(gpus=hparams.gpus, 
                          max_epochs= 20,
-                         limit_val_batches=3,
-                         limit_train_batches=3,
+                         limit_val_batches=0.2,
                         #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ),
                                     ModelCheckpoint(monitor='validation_step_avg_loss/camera_encoder', save_top_k=3)])
