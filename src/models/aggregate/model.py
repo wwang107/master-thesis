@@ -1,6 +1,12 @@
 import torch
 import pytorch_lightning as pl
+import numpy as np
+import cv2
+import matplotlib.pylab as plt
+from models.epipolar.EpipolarTransformer import Epipolar
+from utils.multiview import findFundamentalMat
 from utils.utils import find_keypoints_from_heatmaps, match_detected_groundtruth_keypoint, pad_heatmap_with_replicate_frame
+from utils.vis.vis import save_batch_image_with_joints_multi, save_batch_maps
 class AggregateModel(pl.LightningModule):
     '''
     Aggregate Model composed by a resnet that take 256x256 RGB, then output 64x64 heatmaps and by an unet that takes 64x64 heatmaps 
@@ -9,6 +15,7 @@ class AggregateModel(pl.LightningModule):
     def __init__(self,
                  input_heatmap_encoder,
                  camera_view_encoder=None,
+                 fusion_encoder = None,
                  temporal_encoder=None,
                  loss=None,
                  in_channels=55,
@@ -26,6 +33,7 @@ class AggregateModel(pl.LightningModule):
         self.train_input_heatmap_encoder = train_input_heatmap_encoder
         self.input_heatmap_encoder = input_heatmap_encoder
         self.camera_view_encoder = camera_view_encoder
+        self.fusion_net = fusion_encoder
         self.temporal_encoder = temporal_encoder
         self.loss = loss
 
@@ -57,11 +65,18 @@ class AggregateModel(pl.LightningModule):
         temporal_heatmaps = torch.squeeze(temporal_heatmaps, dim=5)
         return temporal_heatmaps
 
-    def get_camera_heatmap(self, x):
-        camera_heatmaps = self.camera_view_encoder(x)
-        return camera_heatmaps
+    def get_camera_heatmap(self, x, proj_mats, imgs=None, keypoints=None):
+        fused_heatmap, unfused_heatmap = self.camera_view_encoder(x, proj_mats, 
+        imgs[...,0] if imgs != None else None, 
+        keypoints[...,0] if keypoints != None else None)
+        if self.fusion_net != None:
+            concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
+            out = self.fusion_net(concat_input)
+        else:
+            out = fused_heatmap
+        return out
 
-    def forward(self, x):
+    def forward(self, x, proj_mats = None):
         '''
         param: x the image
         '''
@@ -79,8 +94,9 @@ class AggregateModel(pl.LightningModule):
             results['temporal_encoder'] = self.get_temporal_heatmap(
                 input_heatmaps)
         if self.camera_view_encoder:
-            results['camera_view_encoder'] = self.camera_view_encoder(
-                input_heatmaps)
+            results['camera_view_encoder'] = self.get_camera_heatmap(
+                input_heatmaps, proj_mats
+            )
 
         return results
 
@@ -113,15 +129,17 @@ class AggregateModel(pl.LightningModule):
     
     def test_step(self, batch, batch_index):
         batch_imgs = batch['img'].float()
+        batch_gt_heatmap = batch['heatmap']
         batch_gt_keypoint = batch['keypoint2d']
+        proj_mats = batch['KRT']
         stats = {'temporal_encoder': None, 'camera_view_encoder': None, 'input_heatmap_encoder': None}
         
         input_heatmaps = self.get_input_heatmaps(batch_imgs)
         input_metric = self.calculate_confusion_metrics(input_heatmaps, batch_gt_keypoint)
         stats['input_heatmap_encoder'] = input_metric
         if self.camera_view_encoder != None:
-            out_heatmap = self.get_camera_heatmap(input_heatmaps)
-            camera_encoder_metric = self.calculate_confusion_metrics(out_heatmap, batch_gt_keypoint)
+            fused_heatmap = self.get_camera_heatmap(input_heatmaps, proj_mats, batch_imgs, batch_gt_keypoint)
+            camera_encoder_metric = self.calculate_confusion_metrics(fused_heatmap, batch_gt_keypoint)
             stats['camera_view_encoder'] = camera_encoder_metric
 
         if self.temporal_encoder != None:
@@ -167,7 +185,8 @@ class AggregateModel(pl.LightningModule):
     def shared_step(self, batch, batch_index):
         batch_imgs = batch['img'].float()
         batch_gt_heatmaps = batch['heatmap']
-        out = self(batch_imgs)
+        proj_mats = batch['KRT']
+        out = self(batch_imgs, proj_mats)
         middle_frame = self.num_frame//2
 
         if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
@@ -184,10 +203,10 @@ class AggregateModel(pl.LightningModule):
 
         elif out['camera_view_encoder'] != None and out['temporal_encoder'] == None:
             camera_view_heatmaps = out['camera_view_encoder']
-            weight = (batch_gt_heatmaps > 0.1) * \
-                1.0 + (batch_gt_heatmaps <= 0.1) * 0.1
+            weight = (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) > 0.1) * \
+                1.0 + (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) <= 0.1) * 0.1
             c_loss = self.loss(
-                camera_view_heatmaps, batch_gt_heatmaps, weight)
+                camera_view_heatmaps, batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()), weight)
             return c_loss
 
         elif out['camera_view_encoder'] != None and out['temporal_encoder'] != None:

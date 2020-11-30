@@ -53,7 +53,7 @@ Panoptic Joint Label:
 WIDTH = 1920
 HEIGHT = 1080
 TRAINING_CAMERA_ID =  list(set([(0, n) for n in range(0, 31)]) - {(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)})
-VALIDATION_CAMERA_ID = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)]
+VALIDATION_CAMERA_ID = [(0, 23), (0, 22),(0, 20),(0, 16), (0,22)]
 HD_IMG = "hdImgs"
 BODY_EDGES = (
     np.array(
@@ -199,7 +199,7 @@ class PanopticDataset(Dataset):
             if self.is_train
             else VALIDATION_CAMERA_ID[:self.num_view]
         )
-
+        krt = np.zeros((3,4,len(camera_ids)))
         hm = np.zeros(
             (
                 self.num_directional_keypoint,
@@ -241,24 +241,30 @@ class PanopticDataset(Dataset):
             np.float32,
         )
         num_person = np.zeros(self.num_frames_in_subseq, np.int)
-        s_x = self.cfg.DATASET.OUTPUT_SIZE[0] / self.cfg.DATASET.INPUT_SIZE
-        s_y = self.cfg.DATASET.OUTPUT_SIZE[1] / self.cfg.DATASET.INPUT_SIZE
         c = np.array([WIDTH / 2.0, HEIGHT / 2.0])
         s = get_scale(
             (WIDTH, HEIGHT), (self.cfg.DATASET.INPUT_SIZE, self.cfg.DATASET.INPUT_SIZE)
         )
-        r = 0
-        trans = get_affine_transform(
-            c, s, r, (self.cfg.DATASET.INPUT_SIZE, self.cfg.DATASET.INPUT_SIZE)
+        s_output = get_scale(
+            (WIDTH, HEIGHT), self.cfg.DATASET.OUTPUT_SIZE
         )
-
-        for f, frame3d in enumerate(subseq_pose3d):
-            for k, cam_id in enumerate(camera_ids):
+        
+        for k, cam_id in enumerate(camera_ids):
+            r = (random.random() * 2 - 1) * 60 if self.is_train else 0
+            trans = get_affine_transform(
+                c, s, r, (self.cfg.DATASET.INPUT_SIZE, self.cfg.DATASET.INPUT_SIZE)
+            )
+            trans_output = get_affine_transform(c, s_output, r, self.cfg.DATASET.OUTPUT_SIZE)
+            trans_output = np.vstack([trans_output, [0,0,1]])
+            for f, frame3d in enumerate(subseq_pose3d):
+                krt[:,:,k] = self.composeProjectionMatrix(self.files[seq_name]["cams_matrix"][cam_id]['K'],
+                                                   self.files[seq_name]["cams_matrix"][cam_id]['R'],
+                                                   self.files[seq_name]["cams_matrix"][cam_id]['t'],
+                                                   trans_output)
                 for p, pose3d in enumerate(frame3d):
                     pose3d = self.mapKeypointsToCOCO(pose3d)
                     pose2d[p, :, :, k, f] = self.map3DkeypointsTo2d(
-                        pose3d, self.files[seq_name]["cams_matrix"][cam_id]
-                    )
+                        pose3d, self.files[seq_name]["cams_matrix"][cam_id])
                     keypoint2d[p, 0:17, :, k, f] =  pose2d[p, :, 0:17, k, f].transpose()
                     keypoint2d[p, 17:, :, k, f] = self.keypoint_generator(np.expand_dims(pose2d[p, :, :, k, f].transpose(), axis=0), 0.2)
                     x_check = np.bitwise_and(keypoint2d[p, :,0, k, f] >= 0, keypoint2d[p, :,0, k, f] <= WIDTH - 1)
@@ -268,12 +274,8 @@ class PanopticDataset(Dataset):
 
                     for i in range(55):
                         keypoint2d[p, i,0:2, k, f] = affine_transform(
-                            keypoint2d[p, i, 0:2, k, f], trans
+                            keypoint2d[p, i, 0:2, k, f], trans_output
                         )
-                        keypoint2d[p, i,0,  k, f] = keypoint2d[p, i,0, k, f] * s_x
-                        keypoint2d[p, i,1,  k, f] = keypoint2d[p, i,1, k, f] * s_y
-                        # keypoint2d[p, i,0,  k, f] = keypoint2d[p, i,0, k, f] 
-                        # keypoint2d[p, i,1,  k, f] = keypoint2d[p, i,1, k, f]
                 num_person[f] = p + 1
 
                 heatmap = self.heatmap_generator(
@@ -299,7 +301,9 @@ class PanopticDataset(Dataset):
             "heatmap": torch.from_numpy(hm),
             "img": torch.from_numpy(img),
             "keypoint2d": torch.from_numpy(keypoint2d),
-            "num_person": num_person
+            "num_person": num_person,
+            "affine_mat":torch.from_numpy(trans_output),
+            "KRT": torch.from_numpy(krt)
         }
 
     def readSkeletonFromPath(self, path):
@@ -324,16 +328,29 @@ class PanopticDataset(Dataset):
 
         return coco_keypoint
 
-    def map3DkeypointsTo2d(self, keypoints3d, camera):
+    def map3DkeypointsTo2d(self, keypoints3d, camera, affine_mat = None):
         keypoints2d = panutils.projectPoints(
             keypoints3d[0:3, :],
             camera["K"],
             camera["R"],
             camera["t"],
             camera["distCoef"],
+            affine_mat
         )
         return keypoints2d
 
+    def composeProjectionMatrix(self,K,R,T, affine_mat):
+        R_homo = np.zeros((4,4))
+        K_homo = np.zeros((3,4))
+
+        R_homo[0:3,0:3] = R
+        R_homo[0:3,3] = T[:,0] # [R|t]
+        R_homo[3,3] = 1
+        K_homo[0:3,0:3] = affine_mat*K
+        K_homo[2,3] = 1
+
+        out = K_homo@R_homo
+        return out
 class ReplicateViewPanoptic(PanopticDataset):
     def __init__(self, cfg, num_view, heatmap_generator=None, keypoint_generator=None, is_train=True) -> None:
         super().__init__(cfg, 1, heatmap_generator, keypoint_generator, is_train)

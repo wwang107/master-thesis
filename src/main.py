@@ -1,6 +1,8 @@
+from pickle import FALSE
 import torch
 import pytorch_lightning as pl
 from argparse import ArgumentParser
+from pytorch_lightning.callbacks import ModelCheckpoint
 from utils.load_model import load_model_state_dict
 from models.resnet.model import CustomizedResnet
 from models.unet.TemporalUnet import TemporalUnet
@@ -9,6 +11,8 @@ from models.aggregate.model import AggregateModel
 from config.defualt import get_cfg_defaults
 from data.build import make_dataloader
 from callbacks.callbacks import LogConfusionTable, LogModelHeatmaps
+from models.epipolar.EpipolarTransformer import Epipolar
+from utils.multiview import camera_center
 
 def load_weight(model, state_dict):
     model.load_state_dict(state_dict)
@@ -29,26 +33,44 @@ def main(hparams):
 
     resnet = CustomizedResnet(use_pretrained=False)
     resnet = load_weight(resnet,load_model_state_dict(hparams.resnet_weight_dir, device))
+    
+    epipolar = Epipolar(debug=False)
+    # camera_view_model = BaselineMultiViewModel(in_channels, out_channels,
+    #               num_feature=num_feature, num_levels=num_levels, kernel_size=(3,3,5)) if hparams.view_encoder else None
+    
+    camera_view_model = None
+    fuse_model = None
+    if hparams.view_encoder:
+        tmp = TemporalUnet(in_channels, out_channels, num_feature, 
+                                  input_frame=1, 
+                                  epipolar_transfomer=epipolar)
+        camera_view_model = AggregateModel(resnet, None, None,tmp,
+                            weighted_mse_loss, in_channels, out_channels, 
+                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
+        state_dict = torch.load('pretrain/temporal-1-frame-model/epoch=3.ckpt')['state_dict']
+        camera_view_model.load_state_dict(state_dict)
+        camera_view_model = camera_view_model.temporal_encoder
 
-    camera_view_model = BaselineMultiViewModel(in_channels, out_channels,
-                  num_feature=num_feature, num_levels=num_levels, kernel_size=(3,3,5)) if hparams.view_encoder else None
-    temporal_model = TemporalUnet(in_channels, out_channels, num_feature, input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ) if hparams.temporal_encoder else None
-    model = AggregateModel(resnet, camera_view_model, temporal_model,
+        fuse_model = TemporalUnet(2*in_channels, out_channels, num_feature*2, input_frame=1)
+
+    temporal_model = TemporalUnet(in_channels, out_channels, num_feature, 
+                                  input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ, 
+                                  epipolar_transfomer=epipolar) if hparams.temporal_encoder else None
+    model = AggregateModel(resnet, camera_view_model, fuse_model, temporal_model,
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     
     data_loader = {
-        'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
+        # 'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
     }
     trainer = pl.Trainer(gpus=hparams.gpus, 
                          max_epochs= 20,
                          limit_val_batches=0.2,
                         #  limit_test_batches=3,
-                         callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)])
-    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
-    # state_dict = torch.load('lightning_logs/version_0/checkpoints/epoch=3.ckpt')['state_dict']
-    # model.load_state_dict(state_dict)
+                         callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ),
+                                    ModelCheckpoint(monitor='val_loss', save_top_k=3)])
+    trainer.fit(model, train_dataloader=data_loader['valid'], val_dataloaders=data_loader['valid'])
     trainer.test(test_dataloaders=data_loader['valid'])
 
 

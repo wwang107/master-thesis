@@ -8,7 +8,7 @@ class TemporalUnet(pl.LightningModule):
     An encoder structure that have a hardcoded depth and fixed recpetive field.
     Currently, only support depth of 4 and receptive field of 15
     '''
-    def __init__(self, in_channels: int, out_channels: int,num_feature:int, input_frame:int) -> None:
+    def __init__(self, in_channels: int, out_channels: int,num_feature:int, input_frame:int, epipolar_transfomer:nn.Module=None) -> None:
         super().__init__()
         depth = 4
         encoder_kernel_size = (3,3,3)
@@ -42,15 +42,18 @@ class TemporalUnet(pl.LightningModule):
 
         self.encoders = nn.ModuleList(encoders)
         self.decoders = nn.ModuleList(decoders)
+        self.epipolar = epipolar_transfomer
         self.last_conv = ResidualBlock(f_maps[0], out_channels, (3,3,1), 1, use_batch_norm=False)
     
-    def forward(self, x):
+    def forward(self, x, proj_mat=None, imgs = None, keypoints = None):
         '''
         Forward pass each camera view indidvidually, the model will share weight across different view
         params\n
         x: with 6 dimensions [batch, num_joints, height, width, num_views, num_frames]
+        proj_mat: 3-by-4 projection matrix that composed by KRT matrices [batch, 3, 4, num_views]
         '''
         results = []
+        feats = []
         num_view = x.size(4)
         input_view = [x[:,:,:,:,k,:] for k in range(num_view)]
         for k in range(num_view):
@@ -65,10 +68,33 @@ class TemporalUnet(pl.LightningModule):
                 encoder_features = torch.mean(encoder_features, dim = 4, keepdim=True)
                 out = decoder(out, encoder_features)
 
-            results.append(self.last_conv(out))
+            feats.append(out.squeeze(dim=4))
+        
+        if self.epipolar != None and proj_mat != None:
+            unfused = feats[0].clone()
+            ref_feat = feats[0]
+            ref_p = proj_mat[:,:,:,0]
+            for j in range(1, len(feats)):
+                src_feat = feats[j]
+                src_p = proj_mat[:,:,:,j]
+                fuse = self.epipolar(ref_feat, src_feat, ref_p, src_p, 
+                                     imgs[...,0] if imgs != None else None,
+                                     imgs[...,j] if imgs != None else None,
+                                     keypoints[..., 0] if keypoints != None else None,
+                                     keypoints[..., 1] if keypoints != None else None)
+                ref_feat += fuse
+            
+            ref_feat = self.last_conv(ref_feat.view(*ref_feat.size(),1))
+            unfused = self.last_conv(unfused.view(*unfused.size(),1))
+            return ref_feat.view(*ref_feat.size(),1), unfused.view(*unfused.size(),1)
 
-        return torch.stack(results, dim=4)
-
+        else:
+            for j in range(0, len(feats)):
+                ref_feat = feats[j]
+                ref_feat = ref_feat.view(*ref_feat.size(),1)
+                results.append(self.last_conv(ref_feat))
+            return torch.stack(results, dim=4)
+        
     def effective_kernel_size(self, kernel_size, dilation):
         return kernel_size + (kernel_size-1)*(dilation -1)
     

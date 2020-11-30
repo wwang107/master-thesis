@@ -71,6 +71,23 @@ class LogModelHeatmaps(Callback):
             file_name = os.path.join(prefix, file_name)
             self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
         
+        if pl_module.camera_view_encoder != None:
+            if pl_module.fusion_net == None:
+                out_heatmap = pl_module.camera_view_encoder(input_heatmap)
+            else:
+                fused_heatmap, unfused_heatmap = pl_module.camera_view_encoder(input_heatmap, batch['KRT'])
+                concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
+                out_heatmap = pl_module.fusion_net(concat_input)
+            for f in range(0, out_heatmap.size(5),3):
+                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,out_heatmap[:,:,:,:,:, f])
+                for view, image in enumerate(visualization):
+                    file_name = os.path.join(prefix, '{}_test_epoch_{}_step_{}_view_{}_frame_{}.png'.format('camera_encoder', epoch, global_step, view, f))
+                    cv2.imwrite(str(file_name), image)
+
+            file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('camera_encoder', epoch, global_step)
+            file_name = os.path.join(prefix, file_name)
+            self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
+        
     def visualize_confusion_metrics(self, file_name, batch_images, batch_heatmaps, batch_gt_keypoint):
         frame = 0
         num_view = batch_heatmaps.size(4)
@@ -92,7 +109,8 @@ class LogModelHeatmaps(Callback):
         os.makedirs(prefix, exist_ok=True)
 
         batch_images = batch['img']
-        out = pl_module(batch_images.float().to(pl_module.device))
+        proj_mat = batch['KRT']
+        out = pl_module(batch_images.float().to(pl_module.device), proj_mat.to(pl_module.device))
         for encoder in out:
             if out[encoder] != None:
                 if encoder == 'temporal_encoder':

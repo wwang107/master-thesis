@@ -128,7 +128,7 @@ def save_batch_maps(
         batch_image,
         batch_maps,
         batch_mask,
-        normalize=False
+        normalize=True
 ):
     if normalize:
         batch_image = batch_image.clone()
@@ -154,7 +154,7 @@ def save_batch_maps(
             .permute(1, 2, 0)\
             .cpu().numpy()
 
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         maps = batch_maps[i]
 
         image_with_hms = make_heatmaps(image, maps)
@@ -167,7 +167,8 @@ def save_batch_maps(
             mask = np.expand_dims(batch_mask[i].byte().cpu().numpy(), -1)
             grid_image[height_begin:height_end, :map_width, :] = \
                 grid_image[height_begin:height_end, :map_width, :] * mask
-    return cv2.cvtColor(grid_image, cv2.COLOR_BGR2RGB)
+    return grid_image
+    # return cv2.cvtColor(grid_image, cv2.COLOR_BGR2RGB)
 
 
 def save_batch_sequence_image_with_joint(batch_image,

@@ -1,6 +1,6 @@
 import numpy as np
     
-def projectPoints(X, K, R, t, Kd):
+def projectPoints(X, K, R, t, Kd, affine_mat):
     """ Projects points X (3xN) using camera intrinsics K (3x3),
     extrinsics (R,t) and distortion parameters Kd=[k1,k2,p1,p2,k3].
     
@@ -9,7 +9,8 @@ def projectPoints(X, K, R, t, Kd):
     See http://docs.opencv.org/2.4/doc/tutorials/calib3d/camera_calibration/camera_calibration.html
     or cv2.projectPoints
     """
-    
+    if affine_mat is not None:
+        K = affine_mat * K
     x = np.asarray(R*X + t)
 
     x[0:2, :] = x[0:2, :] / (x[2, :])
