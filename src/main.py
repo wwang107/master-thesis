@@ -69,7 +69,7 @@ def main(hparams):
                          limit_val_batches=0.2,
                         #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ),
-                                    ModelCheckpoint(monitor='val_loss', save_top_k=3)])
+                                    ModelCheckpoint(monitor='validation_step_avg_loss/camera_encoder', save_top_k=3)])
     trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     trainer.test(test_dataloaders=data_loader['valid'])
 
