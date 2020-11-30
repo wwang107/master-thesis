@@ -51,7 +51,7 @@ def main(hparams):
         camera_view_model.load_state_dict(state_dict)
         camera_view_model = camera_view_model.temporal_encoder
 
-        fuse_model = TemporalUnet(2*in_channels, out_channels, num_feature*2, input_frame=1)
+        fuse_model = TemporalUnet(2*in_channels, out_channels, num_feature, input_frame=1)
 
     temporal_model = TemporalUnet(in_channels, out_channels, num_feature, 
                                   input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ, 
@@ -61,7 +61,7 @@ def main(hparams):
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     
     data_loader = {
-        # 'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
+        'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
     }
     trainer = pl.Trainer(gpus=hparams.gpus, 
@@ -70,7 +70,7 @@ def main(hparams):
                         #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ),
                                     ModelCheckpoint(monitor='val_loss', save_top_k=3)])
-    trainer.fit(model, train_dataloader=data_loader['valid'], val_dataloaders=data_loader['valid'])
+    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     trainer.test(test_dataloaders=data_loader['valid'])
 
 
