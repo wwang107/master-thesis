@@ -2,6 +2,7 @@ import cv2
 import os
 import torch
 from pytorch_lightning import Callback
+from torch import tensor
 from utils.vis.vis import save_batch_multi_view_with_heatmap
 from utils.utils import pad_heatmap_with_replicate_frame, find_keypoints_from_heatmaps, match_detected_groundtruth_keypoint
 from utils.vis.vis import save_keypoint_detection
@@ -83,7 +84,8 @@ class LogModelHeatmaps(Callback):
                     input_heatmap = torch.index_select(input_heatmap, dim=4, index=torch.tensor(indices).to(input_heatmap.device))
                     proj_mat = torch.index_select(batch['KRT'], dim=3, index=torch.tensor(indices).to(batch['KRT'].device))
                     fused_heatmap, unfused_heatmap = pl_module.camera_view_encoder(input_heatmap, proj_mat)
-                    concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
+                    ref_heatmap = unfused_heatmap.index_select(dim=4, index=torch.tensor([0]).to(unfused_heatmap.device))
+                    concat_input = torch.cat((fused_heatmap, ref_heatmap), dim=1)
                     out_heatmaps.append(pl_module.fusion_net(concat_input))
             out_heatmaps = torch.cat(out_heatmaps, dim=4)
             for f in range(0, out_heatmaps.size(5),3):
@@ -123,10 +125,23 @@ class LogModelHeatmaps(Callback):
             if out[encoder] != None:
                 if encoder == 'temporal_encoder':
                     heatmaps = out[encoder] 
-                else: 
-                    heatmaps = out[encoder][:,:,:,:,:, self.middle_frame]
-                heatmaps = heatmaps.cpu()
-                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],heatmaps)
-                for view, image in enumerate(visualization):
-                    file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
-                    cv2.imwrite(str(file_name), image)
+                else:
+                    if isinstance(out[encoder], tuple):
+                        fused_heatmap, unfused_heatmap = out[encoder]
+                        fused_heatmap = fused_heatmap.cpu()
+                        unfused_heatmap = unfused_heatmap.cpu()
+                        vis_fused = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],fused_heatmap)
+                        vis_unfused = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],unfused_heatmap)
+                        for view, image in enumerate(vis_fused):
+                            file_name = os.path.join(prefix, 'fused_{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)
+                        for view, image in enumerate(vis_unfused):
+                            file_name = os.path.join(prefix, 'unfused_{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)
+                    else:  
+                        heatmaps = out[encoder][:,:,:,:,:, self.middle_frame]
+                        heatmaps = heatmaps.cpu()
+                        visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],heatmaps)
+                        for view, image in enumerate(visualization):
+                            file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)
