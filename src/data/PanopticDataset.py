@@ -142,7 +142,7 @@ class PanopticDataset(Dataset):
             )
 
             start_frame = (
-                self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
+                self.num_frames_in_subseq
             )
             step = self.num_frames_in_subseq
             end_frame = len(skel_json_paths)
