@@ -53,7 +53,7 @@ Panoptic Joint Label:
 WIDTH = 1920
 HEIGHT = 1080
 TRAINING_CAMERA_ID =  list(set([(0, n) for n in range(0, 31)]) - {(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)})
-VALIDATION_CAMERA_ID = [(0, 23), (0, 22),(0, 20),(0, 16), (0,22)]
+VALIDATION_CAMERA_ID = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)]
 HD_IMG = "hdImgs"
 BODY_EDGES = (
     np.array(
@@ -302,7 +302,6 @@ class PanopticDataset(Dataset):
             "img": torch.from_numpy(img),
             "keypoint2d": torch.from_numpy(keypoint2d),
             "num_person": num_person,
-            "affine_mat":torch.from_numpy(trans_output),
             "KRT": torch.from_numpy(krt)
         }
 

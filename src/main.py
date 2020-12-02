@@ -1,3 +1,4 @@
+from logging import debug
 from pickle import FALSE
 import torch
 import pytorch_lightning as pl
@@ -56,10 +57,10 @@ def main(hparams):
     temporal_model = TemporalUnet(in_channels, out_channels, num_feature, 
                                   input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ, 
                                   epipolar_transfomer=epipolar) if hparams.temporal_encoder else None
-    model = AggregateModel(resnet, camera_view_model, fuse_model, temporal_model,
+    model = AggregateModel(resnet, camera_view_model, fuse_model, temporal_model,None,
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
-    
+    model.load_state_dict(torch.load('lightning_logs/version_6/checkpoints/epoch=16.ckpt')['state_dict'])
     data_loader = {
         'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
@@ -70,7 +71,7 @@ def main(hparams):
                         #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ),
                                     ModelCheckpoint(monitor='validation_step_avg_loss/camera_encoder', save_top_k=3)])
-    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
+    trainer.fit(model,train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     trainer.test(test_dataloaders=data_loader['valid'])
 
 

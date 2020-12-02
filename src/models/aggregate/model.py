@@ -17,6 +17,7 @@ class AggregateModel(pl.LightningModule):
                  camera_view_encoder=None,
                  fusion_encoder = None,
                  temporal_encoder=None,
+                 epipolar_transfomer=None,
                  loss=None,
                  in_channels=55,
                  out_channels=55,
@@ -33,6 +34,7 @@ class AggregateModel(pl.LightningModule):
         self.train_input_heatmap_encoder = train_input_heatmap_encoder
         self.input_heatmap_encoder = input_heatmap_encoder
         self.camera_view_encoder = camera_view_encoder
+        self.epipolar_transfomer = epipolar_transfomer
         self.fusion_net = fusion_encoder
         self.temporal_encoder = temporal_encoder
         self.loss = loss
@@ -66,17 +68,17 @@ class AggregateModel(pl.LightningModule):
         return temporal_heatmaps
 
     def get_camera_heatmap(self, x, proj_mats, imgs=None, keypoints=None):
-        fused_heatmap, unfused_heatmap = self.camera_view_encoder(x, proj_mats, 
+        warped_heatmap, unfused_heatmap = self.camera_view_encoder(x, proj_mats, 
         imgs[...,0] if imgs != None else None, 
         keypoints[...,0] if keypoints != None else None)
         if self.fusion_net != None:
-            concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
-            out = self.fusion_net(concat_input)
+            ref_heatmap=unfused_heatmap.index_select(dim=4, index=torch.tensor([0]).to(unfused_heatmap.device))
+            concat_input = torch.cat((warped_heatmap, ref_heatmap), dim=1)
+            return self.fusion_net(concat_input), unfused_heatmap
         else:
-            out = fused_heatmap
-        return out
+            return warped_heatmap
 
-    def forward(self, x, proj_mats = None):
+    def forward(self, x, proj_mats = None, keypoint = None):
         '''
         param: x the image
         '''
@@ -90,6 +92,17 @@ class AggregateModel(pl.LightningModule):
             input_heatmaps = input_heatmaps.detach()
 
         results['input_heatmap_encoder'] = input_heatmaps
+
+        # if self.epipolar_transfomer:
+        #     ref_p = proj_mats[:,:,:,0]
+        #     for f in range(self.num_frame):
+        #         ref_feat = input_heatmaps[...,0, f]
+        #         for v in range(1, self.num_view):
+        #             src_feat = input_heatmaps[...,v, f]
+        #             src_p = proj_mats[:,:,:,v]
+        #             fuse = self.epipolar_transfomer(ref_feat, src_feat, ref_p, src_p, x[...,0,f],x[...,v,f], keypoint[...,0,f],keypoint[..., v,f])
+        #             ref_feat += fuse
+
         if self.temporal_encoder:
             results['temporal_encoder'] = self.get_temporal_heatmap(
                 input_heatmaps)
@@ -138,8 +151,17 @@ class AggregateModel(pl.LightningModule):
         input_metric = self.calculate_confusion_metrics(input_heatmaps, batch_gt_keypoint)
         stats['input_heatmap_encoder'] = input_metric
         if self.camera_view_encoder != None:
-            fused_heatmap = self.get_camera_heatmap(input_heatmaps, proj_mats, batch_imgs, batch_gt_keypoint)
-            camera_encoder_metric = self.calculate_confusion_metrics(fused_heatmap, batch_gt_keypoint)
+            fused_heatmaps = []
+            for ref_view in range(self.num_view):
+                    indices = [ref_view]
+                    indices.extend([x for x in range(self.num_view) if x != ref_view])
+                    input_heatmaps = torch.index_select(input_heatmaps, dim=4, index=torch.tensor(indices).to(input_heatmaps.device))
+                    proj_mats = torch.index_select(proj_mats, dim=3, index=torch.tensor(indices).to(proj_mats.device))
+                    out = self.get_camera_heatmap(input_heatmaps, proj_mats, batch_imgs, batch_gt_keypoint)
+                    if self.fusion_net != None:
+                        fused_heatmaps.append(out[0])
+            fused_heatmaps = torch.cat(fused_heatmaps, dim=4)
+            camera_encoder_metric = self.calculate_confusion_metrics(fused_heatmaps, batch_gt_keypoint)
             stats['camera_view_encoder'] = camera_encoder_metric
 
         if self.temporal_encoder != None:
@@ -186,7 +208,9 @@ class AggregateModel(pl.LightningModule):
         batch_imgs = batch['img'].float()
         batch_gt_heatmaps = batch['heatmap']
         proj_mats = batch['KRT']
-        out = self(batch_imgs, proj_mats)
+        batch_keypoint = batch['keypoint2d']
+        
+        out = self(batch_imgs, proj_mats, batch_keypoint)
         middle_frame = self.num_frame//2
 
         if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
@@ -203,10 +227,19 @@ class AggregateModel(pl.LightningModule):
 
         elif out['camera_view_encoder'] != None and out['temporal_encoder'] == None:
             camera_view_heatmaps = out['camera_view_encoder']
-            weight = (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) > 0.1) * \
-                1.0 + (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) <= 0.1) * 0.1
-            c_loss = self.loss(
-                camera_view_heatmaps, batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()), weight)
+            if len(camera_view_heatmaps) == 2:
+                fused_heatmap, unfused_heatmap = camera_view_heatmaps
+                ref_view_gt_heatmaps = batch_gt_heatmaps[...,0,middle_frame].view(*fused_heatmap.size())
+                weight_loss_fused_heatmap = (ref_view_gt_heatmaps > 0.1) * \
+                1.0 + (ref_view_gt_heatmaps <= 0.1) * 0.1
+                weight_loss_unfused_heatmap = (batch_gt_heatmaps > 0.1) * 1.0 + (batch_gt_heatmaps <= 0.1) * 0.1
+                c_loss = self.loss(ref_view_gt_heatmaps, fused_heatmap, weight_loss_fused_heatmap)
+                c_loss += self.loss(batch_gt_heatmaps, unfused_heatmap, weight_loss_unfused_heatmap)
+            else:
+                weight = (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) > 0.1) * \
+                    1.0 + (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) <= 0.1) * 0.1
+                c_loss = self.loss(
+                    camera_view_heatmaps, batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()), weight)
             return c_loss
 
         elif out['camera_view_encoder'] != None and out['temporal_encoder'] != None:
