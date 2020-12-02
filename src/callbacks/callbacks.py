@@ -73,20 +73,28 @@ class LogModelHeatmaps(Callback):
         
         if pl_module.camera_view_encoder != None:
             if pl_module.fusion_net == None:
-                out_heatmap = pl_module.camera_view_encoder(input_heatmap)
+                out_heatmaps = pl_module.camera_view_encoder(input_heatmap)
             else:
-                fused_heatmap, unfused_heatmap = pl_module.camera_view_encoder(input_heatmap, batch['KRT'])
-                concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
-                out_heatmap = pl_module.fusion_net(concat_input)
-            for f in range(0, out_heatmap.size(5),3):
-                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,out_heatmap[:,:,:,:,:, f])
+                out_heatmaps = []
+                num_view = input_heatmap.size(4)
+                for ref_view in range(num_view):
+                    indices = [ref_view]
+                    indices.extend([x for x in range(num_view) if x != ref_view])
+                    input_heatmap = torch.index_select(input_heatmap, dim=4, index=torch.tensor(indices).to(input_heatmap.device))
+                    proj_mat = torch.index_select(batch['KRT'], dim=3, index=torch.tensor(indices).to(batch['KRT'].device))
+                    fused_heatmap, unfused_heatmap = pl_module.camera_view_encoder(input_heatmap, proj_mat)
+                    concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
+                    out_heatmaps.append(pl_module.fusion_net(concat_input))
+            out_heatmaps = torch.cat(out_heatmaps, dim=4)
+            for f in range(0, out_heatmaps.size(5),3):
+                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,out_heatmaps[:,:,:,:,:, f])
                 for view, image in enumerate(visualization):
                     file_name = os.path.join(prefix, '{}_test_epoch_{}_step_{}_view_{}_frame_{}.png'.format('camera_encoder', epoch, global_step, view, f))
                     cv2.imwrite(str(file_name), image)
 
             file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('camera_encoder', epoch, global_step)
             file_name = os.path.join(prefix, file_name)
-            self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
+            self.visualize_confusion_metrics(file_name, batch_images, out_heatmaps, batch_gt_keypoint)
         
     def visualize_confusion_metrics(self, file_name, batch_images, batch_heatmaps, batch_gt_keypoint):
         frame = 0
