@@ -14,6 +14,7 @@ class AggregateModel(pl.LightningModule):
 
     def __init__(self,
                  input_heatmap_encoder,
+                 epipolar_transformer = None,
                  camera_view_encoder=None,
                  fusion_encoder = None,
                  temporal_encoder=None,
@@ -32,6 +33,7 @@ class AggregateModel(pl.LightningModule):
         self.out_channels = out_channels
         self.train_input_heatmap_encoder = train_input_heatmap_encoder
         self.input_heatmap_encoder = input_heatmap_encoder
+        self.epipolar_transformer = epipolar_transformer
         self.camera_view_encoder = camera_view_encoder
         self.fusion_net = fusion_encoder
         self.temporal_encoder = temporal_encoder
@@ -59,6 +61,31 @@ class AggregateModel(pl.LightningModule):
                 input_heatmaps[:, :, :, :, k, f] = self.input_heatmap_encoder(
                     x[:, :, :, :, k, f])
         return input_heatmaps
+    
+    def get_epipolar_heatmap(self,feats, proj_mats, imgs = None, keypoints = None):
+        num_view = feats.size(4)
+        
+        unfused = []
+        ref_feat = feats[:,:,:,:,0]
+        ref_p = proj_mats[:,:,:,0]
+        fuse_sum = torch.zeros(ref_feat.size()).to(ref_feat)
+        for j in range(1, num_view):
+            src_feat = feats[:,:,:,:,j]
+            src_p = proj_mats[:,:,:,j]
+            fuse = self.epipolar_transformer(ref_feat, src_feat, ref_p, src_p, 
+                                    imgs[...,0] if imgs != None else None,
+                                    imgs[...,j] if imgs != None else None,
+                                    keypoints[..., 0] if keypoints != None else None,
+                                    keypoints[..., j] if keypoints != None else None)
+            fuse_sum += fuse
+        
+        fuse_sum = self.last_conv(fuse_sum.view(*fuse_sum.size(),1))
+
+        for i in range(0,len(num_view)):
+            unfused.append(self.last_conv(x[:,:,:,:,i].view(*x[:,:,:,:,i].size(),1)))
+        unfused = torch.cat(unfused, dim=4)
+        return fuse_sum.view(*fuse_sum.size(),1), unfused.view(*unfused.size(),1)
+
 
     def get_temporal_heatmap(self, x):
         temporal_heatmaps = self.temporal_encoder(x)
@@ -72,11 +99,11 @@ class AggregateModel(pl.LightningModule):
         if self.fusion_net != None:
             concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
             out = self.fusion_net(concat_input)
+            return out, unfused_heatmap
         else:
-            out = fused_heatmap
-        return out
+            return fused_heatmap, unfused_heatmap
 
-    def forward(self, x, proj_mats = None):
+    def forward(self, x, proj_mats = None, keypoint = None):
         '''
         param: x the image
         '''
@@ -89,6 +116,9 @@ class AggregateModel(pl.LightningModule):
         if not is_train_input_heatmap_encoder:
             input_heatmaps = input_heatmaps.detach()
 
+        if self.epipolar_transformer != None and self.fusion_net != None:
+            fused_heatmaps, unfused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats, x[...,0], keypoint[...,0])
+
         results['input_heatmap_encoder'] = input_heatmaps
         if self.temporal_encoder:
             results['temporal_encoder'] = self.get_temporal_heatmap(
@@ -99,6 +129,49 @@ class AggregateModel(pl.LightningModule):
             )
 
         return results
+
+    def shared_step(self, batch, batch_index):
+        batch_imgs = batch['img'].float()
+        batch_gt_heatmaps = batch['heatmap']
+        proj_mats = batch['KRT']
+        batch_keypoint = batch['keypoint2d']
+        out = self(batch_imgs, proj_mats, batch_keypoint)
+        middle_frame = self.num_frame//2
+
+        if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
+            raise NotImplementedError()
+
+        if out['temporal_encoder'] != None and out['camera_view_encoder'] == None:
+            temporal_heatmaps = out['temporal_encoder']
+            weight = (batch_gt_heatmaps[:, :, :, :, :, middle_frame] > 0.1) * \
+                1.0 + (batch_gt_heatmaps[:, :, :, :,
+                                            :, middle_frame] <= 0.1) * 0.1
+            t_loss = self.loss(
+                temporal_heatmaps, batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
+            return t_loss
+
+        elif out['camera_view_encoder'] != None and out['temporal_encoder'] == None:
+            camera_view_heatmaps = out['camera_view_encoder']
+            if isinstance(camera_view_heatmaps, tuple):
+                fused_heatmap, unfused_heatmap = camera_view_heatmaps
+                weight = (batch_gt_heatmaps[...,0,middle_frame].view(*fused_heatmap.size()) > 0.1) * \
+                    1.0 + (batch_gt_heatmaps[...,0,middle_frame].view(*fused_heatmap.size()) <= 0.1) * 0.1
+                c_loss = self.loss(
+                    fused_heatmap, batch_gt_heatmaps[...,0,middle_frame].view(*fused_heatmap.size()), weight)
+                return c_loss
+
+        elif out['camera_view_encoder'] != None and out['temporal_encoder'] != None:
+            temporal_heatmaps = out['temporal_encoder']
+            camera_view_heatmaps = out['camera_view_encoder']
+            weight = (batch_gt_heatmaps[:, :, :, :, :, middle_frame] > 0.1) * \
+                1.0 + (batch_gt_heatmaps[:, :, :, :,
+                                            :, middle_frame] <= 0.1) * 0.1
+            t_loss = self.loss(
+                temporal_heatmaps, batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
+            c_loss = self.loss(
+                camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
+
+            return c_loss + t_loss
 
     def training_step(self, batch, batch_idx):
         loss = self.shared_step(batch, batch_idx)
@@ -179,48 +252,6 @@ class AggregateModel(pl.LightningModule):
                     self.log('{}/true positive distance'.format(encoder), None)
                 else:
                     self.log('{}/true positive distance'.format(encoder), result[encoder]['true positive distance']/distance_devider[encoder])       
-
-        
-
-    def shared_step(self, batch, batch_index):
-        batch_imgs = batch['img'].float()
-        batch_gt_heatmaps = batch['heatmap']
-        proj_mats = batch['KRT']
-        out = self(batch_imgs, proj_mats)
-        middle_frame = self.num_frame//2
-
-        if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
-            raise NotImplementedError()
-
-        if out['temporal_encoder'] != None and out['camera_view_encoder'] == None:
-            temporal_heatmaps = out['temporal_encoder']
-            weight = (batch_gt_heatmaps[:, :, :, :, :, middle_frame] > 0.1) * \
-                1.0 + (batch_gt_heatmaps[:, :, :, :,
-                                         :, middle_frame] <= 0.1) * 0.1
-            t_loss = self.loss(
-                temporal_heatmaps, batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
-            return t_loss
-
-        elif out['camera_view_encoder'] != None and out['temporal_encoder'] == None:
-            camera_view_heatmaps = out['camera_view_encoder']
-            weight = (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) > 0.1) * \
-                1.0 + (batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()) <= 0.1) * 0.1
-            c_loss = self.loss(
-                camera_view_heatmaps, batch_gt_heatmaps[...,0,middle_frame].view(*camera_view_heatmaps.size()), weight)
-            return c_loss
-
-        elif out['camera_view_encoder'] != None and out['temporal_encoder'] != None:
-            temporal_heatmaps = out['temporal_encoder']
-            camera_view_heatmaps = out['camera_view_encoder']
-            weight = (batch_gt_heatmaps[:, :, :, :, :, middle_frame] > 0.1) * \
-                1.0 + (batch_gt_heatmaps[:, :, :, :,
-                                         :, middle_frame] <= 0.1) * 0.1
-            t_loss = self.loss(
-                temporal_heatmaps, batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
-            c_loss = self.loss(
-                camera_view_heatmaps[:, :, :, :, :, middle_frame], batch_gt_heatmaps[:, :, :, :, :, middle_frame], weight)
-    
-            return c_loss + t_loss
 
     def calculate_confusion_metrics(self, batch_heatmaps, batch_gt_keypoint):
         num_frame = batch_heatmaps.size(5)

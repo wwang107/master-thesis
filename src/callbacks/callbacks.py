@@ -115,10 +115,24 @@ class LogModelHeatmaps(Callback):
             if out[encoder] != None:
                 if encoder == 'temporal_encoder':
                     heatmaps = out[encoder] 
-                else: 
-                    heatmaps = out[encoder][:,:,:,:,:, self.middle_frame]
-                heatmaps = heatmaps.cpu()
-                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],heatmaps)
-                for view, image in enumerate(visualization):
-                    file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
-                    cv2.imwrite(str(file_name), image)
+                if encoder == 'camera_view_encoder': 
+                    heatmaps = out[encoder]
+                    if isinstance(heatmaps, tuple):
+                        fused_heatmap, unfused_heatmap = heatmaps
+                        fused_heatmap = fused_heatmap.cpu()
+                        unfused_heatmap = unfused_heatmap.cpu()
+                        vis_fused = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],fused_heatmap)
+                        vis_unfused = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],unfused_heatmap)
+
+                        for view, image in enumerate(vis_fused):
+                            file_name = os.path.join(prefix, 'fused_{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)
+                        for view, image in enumerate(vis_unfused):
+                            file_name = os.path.join(prefix, 'unfused_{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)
+                    else:
+                        heatmaps = heatmaps.cpu()
+                        visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],heatmaps)
+                        for view, image in enumerate(visualization):
+                            file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)

@@ -93,14 +93,16 @@ class Epipolar(nn.Module):
                 ax2.set_xlim([0, 64])
                 for j in range(0,17):
                     cx, cy = int(coord2pix(keypt1[i,2,j,0], 1)), int(coord2pix(keypt1[i,2,j,1], 1))
-                    xy = corr_pos[0][cy,cx].cpu().numpy()
+                    xy = corr_pos[i][cy,cx].cpu().numpy()
 
-                    line_start1 = de_normalize(sample_locs[1,0][int(cy)][int(cx)], H, W)
-                    line_start2 = de_normalize(sample_locs[127,0][int(cy)][int(cx)], H, W)
+                    line_start1 = de_normalize(sample_locs[1,i][int(cy)][int(cx)], H, W)
+                    line_start2 = de_normalize(sample_locs[127,i][int(cy)][int(cx)], H, W)
                     
                     ax1.scatter(cx,cy,color='yellow')
                     ax2.plot([line_start1[0], line_start2[0]], [line_start1[1], line_start2[1]], alpha=0.5, color='b', zorder=1)
                     ax2.scatter(xy[0],xy[1],color='red')
+                    dx, dy = int(coord2pix(keypt2[i,2,j,0], 1)), int(coord2pix(keypt2[i,2,j,1], 1))
+                    ax2.scatter(dx,dy, color='yellow')
                 plt.show()
 
             idx = idx.view(1, 1, H, W).expand(-1, C, -1, -1)
@@ -111,7 +113,7 @@ class Epipolar(nn.Module):
         out = torch.stack(batch)
         return out
     
-    def epipolar_similarity(self, feat1, sampled_feat2, epipolar_similarity = 'cos', epipolar_attension = 'avg'):
+    def epipolar_similarity(self, feat1, sampled_feat2, epipolar_similarity = 'dot', epipolar_attension = 'avg'):
         """ 
         Args:
             fea1: C, H, W

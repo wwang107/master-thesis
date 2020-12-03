@@ -71,9 +71,10 @@ class TemporalUnet(pl.LightningModule):
             feats.append(out.squeeze(dim=4))
         
         if self.epipolar != None and proj_mat != None:
-            unfused = feats[0].clone()
+            unfused = []
             ref_feat = feats[0]
             ref_p = proj_mat[:,:,:,0]
+            fuse_sum = torch.zeros(ref_feat.size()).to(ref_feat)
             for j in range(1, len(feats)):
                 src_feat = feats[j]
                 src_p = proj_mat[:,:,:,j]
@@ -82,12 +83,14 @@ class TemporalUnet(pl.LightningModule):
                                      imgs[...,j] if imgs != None else None,
                                      keypoints[..., 0] if keypoints != None else None,
                                      keypoints[..., 1] if keypoints != None else None)
-                ref_feat += fuse
+                fuse_sum += fuse
             
-            ref_feat = self.last_conv(ref_feat.view(*ref_feat.size(),1))
-            unfused = self.last_conv(unfused.view(*unfused.size(),1))
-            return ref_feat.view(*ref_feat.size(),1), unfused.view(*unfused.size(),1)
+            fuse_sum = self.last_conv(fuse_sum.view(*fuse_sum.size(),1))
 
+            for i in range(0,len(feats)):
+                unfused.append(self.last_conv(feats[i].view(*feats[i].size(),1)))
+            unfused = torch.cat(unfused, dim=4)
+            return fuse_sum.view(*fuse_sum.size(),1), unfused.view(*unfused.size(),1)
         else:
             for j in range(0, len(feats)):
                 ref_feat = feats[j]

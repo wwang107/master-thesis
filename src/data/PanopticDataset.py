@@ -53,7 +53,7 @@ Panoptic Joint Label:
 WIDTH = 1920
 HEIGHT = 1080
 TRAINING_CAMERA_ID =  list(set([(0, n) for n in range(0, 31)]) - {(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)})
-VALIDATION_CAMERA_ID = [(0, 23), (0, 22),(0, 20),(0, 16), (0,22)]
+VALIDATION_CAMERA_ID = [(0, 23), (0, 12), (0, 6), (0, 13), (0, 3)]
 HD_IMG = "hdImgs"
 BODY_EDGES = (
     np.array(
@@ -77,9 +77,9 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["170407_haggling_a1", "160226_haggling1", "161202_haggling1"]
+TRAIN_LIST = ["160226_haggling1"]
 
-VAL_LIST = ["160906_pizza1"]
+VAL_LIST = ["160226_haggling1"]
 
 
 class PanopticDataset(Dataset):
@@ -145,7 +145,7 @@ class PanopticDataset(Dataset):
                 self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
             )
             step = self.num_frames_in_subseq
-            end_frame = len(skel_json_paths)
+            end_frame = start_frame + 100*step
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):
                 pose3d_subseq = []
@@ -250,7 +250,7 @@ class PanopticDataset(Dataset):
         )
         
         for k, cam_id in enumerate(camera_ids):
-            r = (random.random() * 2 - 1) * 60 if self.is_train else 0
+            r = (random.random() * 2 - 1) * 30 if self.is_train else 0
             trans = get_affine_transform(
                 c, s, r, (self.cfg.DATASET.INPUT_SIZE, self.cfg.DATASET.INPUT_SIZE)
             )
@@ -295,7 +295,7 @@ class PanopticDataset(Dataset):
                 )
                 hm[:, :, :, k, f] = heatmap
         
-        keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
+        # keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
         img = img.transpose(2, 0, 1, 3, 4)
         return {
             "heatmap": torch.from_numpy(hm),
