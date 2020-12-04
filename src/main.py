@@ -1,4 +1,3 @@
-from pickle import FALSE
 import torch
 import pytorch_lightning as pl
 from argparse import ArgumentParser

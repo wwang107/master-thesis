@@ -65,7 +65,6 @@ class AggregateModel(pl.LightningModule):
     def get_epipolar_heatmap(self,feats, proj_mats, imgs = None, keypoints = None):
         num_view = feats.size(4)
         
-        unfused = []
         ref_feat = feats[:,:,:,:,0]
         ref_p = proj_mats[:,:,:,0]
         fuse_sum = torch.zeros(ref_feat.size()).to(ref_feat)
@@ -78,13 +77,8 @@ class AggregateModel(pl.LightningModule):
                                     keypoints[..., 0] if keypoints != None else None,
                                     keypoints[..., j] if keypoints != None else None)
             fuse_sum += fuse
-        
-        fuse_sum = self.last_conv(fuse_sum.view(*fuse_sum.size(),1))
 
-        for i in range(0,len(num_view)):
-            unfused.append(self.last_conv(x[:,:,:,:,i].view(*x[:,:,:,:,i].size(),1)))
-        unfused = torch.cat(unfused, dim=4)
-        return fuse_sum.view(*fuse_sum.size(),1), unfused.view(*unfused.size(),1)
+        return fuse_sum.view(*fuse_sum.size(),1)
 
 
     def get_temporal_heatmap(self, x):
@@ -108,7 +102,7 @@ class AggregateModel(pl.LightningModule):
         param: x the image
         '''
         results = {'input_heatmap_encoder': None,
-                   'temporal_encoder': None, 'camera_view_encoder': None}
+                   'temporal_encoder': None, 'camera_view_encoder': None, 'epipolar_transformer':None}
         is_train_input_heatmap_encoder = self.train_input_heatmap_encoder and self.training
 
         with torch.set_grad_enabled(is_train_input_heatmap_encoder):
@@ -117,7 +111,8 @@ class AggregateModel(pl.LightningModule):
             input_heatmaps = input_heatmaps.detach()
 
         if self.epipolar_transformer != None and self.fusion_net != None:
-            fused_heatmaps, unfused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats, x[...,0], keypoint[...,0])
+            fused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats, x[...,0], keypoint[...,0] if keypoint != None else None)
+            results['epipolar_transformer'] = fused_heatmaps
 
         results['input_heatmap_encoder'] = input_heatmaps
         if self.temporal_encoder:
@@ -138,8 +133,16 @@ class AggregateModel(pl.LightningModule):
         out = self(batch_imgs, proj_mats, batch_keypoint)
         middle_frame = self.num_frame//2
 
-        if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
-            raise NotImplementedError()
+        # if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
+        #     raise NotImplementedError()
+
+        if self.train_input_heatmap_encoder:
+            inpur_heatmap = out['input_heatmap_encoder']
+            weight = (batch_gt_heatmaps[:, :, :, :, :, middle_frame] > 0.1) * \
+                1.0 + (batch_gt_heatmaps[:, :, :, :,
+                                            :, middle_frame] <= 0.1) * 0.1
+            i_loss = self.loss(inpur_heatmap, batch_gt_heatmaps[:, :, :, :, :, middle_frame].unsqueeze(dim=5), weight.unsqueeze(dim=5))
+            return i_loss
 
         if out['temporal_encoder'] != None and out['camera_view_encoder'] == None:
             temporal_heatmaps = out['temporal_encoder']
@@ -183,8 +186,12 @@ class AggregateModel(pl.LightningModule):
             loss_key = 'training_step/temporal_encoder'
             self.log(loss_key, loss)
             return loss
-        else:
-            raise NotImplementedError()
+        elif self.camera_view_encoder == None and self.temporal_encoder == None and self.train_input_heatmap_encoder:
+            loss_key = 'training_step/input_heatmap_encoder'
+            self.log(loss_key, loss)
+            return loss
+        # else:
+        #     raise NotImplementedError()
         
     
     def validation_step(self, batch, batch_idx):
@@ -197,8 +204,12 @@ class AggregateModel(pl.LightningModule):
             loss_key = 'validation_step_avg_loss/temporal_encoder'
             self.log(loss_key, loss, on_epoch=True)
             return loss
-        else:
-            raise NotImplementedError()
+        elif self.camera_view_encoder == None and self.temporal_encoder == None and self.train_input_heatmap_encoder:
+            loss_key = 'validation_step_avg_loss/input_heatmap_encoder'
+            self.log(loss_key, loss, on_epoch=True)
+            return loss
+        # else:
+        #     raise NotImplementedError()
     
     def test_step(self, batch, batch_index):
         batch_imgs = batch['img'].float()

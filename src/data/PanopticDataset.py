@@ -77,7 +77,7 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["171026_pose1", "171026_pose2", "171204_pose1", "171204_pose2", "171204_pose3", "171204_pose5"]
+TRAIN_LIST = ["171026_pose1", "171026_pose2", "171204_pose1", "171204_pose2", "171204_pose5"]
 
 VAL_LIST = ["171204_pose3"]
 
@@ -145,7 +145,7 @@ class PanopticDataset(Dataset):
                 self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
             )
             step = self.num_frames_in_subseq
-            end_frame = start_frame + 100*step
+            end_frame = len(skel_json_paths)
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):
                 pose3d_subseq = []
@@ -295,7 +295,7 @@ class PanopticDataset(Dataset):
                 )
                 hm[:, :, :, k, f] = heatmap
         
-        # keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
+        keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
         img = img.transpose(2, 0, 1, 3, 4)
         return {
             "heatmap": torch.from_numpy(hm),

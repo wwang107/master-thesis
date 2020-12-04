@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from core import cfg
-from utils.multiview import normalize, findFundamentalMat, de_normalize, coord2pix  
+from utils.multiview import normalize, findFundamentalMat, de_normalize, coord2pix
 
 visualize_prob = 0.1
 
@@ -13,9 +13,9 @@ class Epipolar(nn.Module):
     def __init__(self, debug=False):
         super(Epipolar, self).__init__()
         self.debug = debug
-        
+
         self.feat_h, self.feat_w = cfg.KEYPOINT.HEATMAP_SIZE
-        self.sample_size = cfg.EPIPOLAR.SAMPLESIZE
+        self.sample_size =64
         self.epsilon = 0.001 # for avoiding floating point error
 
         y = torch.arange(0, self.feat_h, dtype=torch.float) # 0 .. 128
@@ -108,6 +108,7 @@ class Epipolar(nn.Module):
             idx = idx.view(1, 1, H, W).expand(-1, C, -1, -1)
             # C x H x W
             tmp = src_sampled.max(dim=0, keepdim=True)[0].squeeze()
+            # tmp = torch.gather(src_sampled, 0, idx).squeeze()
             # tmp = (src_sampled * sim.view(-1, 1, H, W)).sum(0)
             batch.append(tmp)
         out = torch.stack(batch)

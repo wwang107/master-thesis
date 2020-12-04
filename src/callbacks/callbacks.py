@@ -114,7 +114,19 @@ class LogModelHeatmaps(Callback):
         for encoder in out:
             if out[encoder] != None:
                 if encoder == 'temporal_encoder':
-                    heatmaps = out[encoder] 
+                    heatmaps = out[encoder]
+                if encoder == 'epipolar_transformer':
+                    heatmaps = out[encoder]
+                    visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],heatmaps)
+                    for view, image in enumerate(visualization):
+                            file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)
+                if encoder == 'input_heatmap_encoder':
+                    heatmaps = out[encoder]
+                    visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],heatmaps)
+                    for view, image in enumerate(visualization):
+                            file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                            cv2.imwrite(str(file_name), image)
                 if encoder == 'camera_view_encoder': 
                     heatmaps = out[encoder]
                     if isinstance(heatmaps, tuple):
