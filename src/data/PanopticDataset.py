@@ -77,9 +77,9 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["160226_haggling1"]
+TRAIN_LIST = ["171026_pose1", "171026_pose2", "171204_pose1", "171204_pose2", "171204_pose3", "171204_pose5"]
 
-VAL_LIST = ["160226_haggling1"]
+VAL_LIST = ["171204_pose3"]
 
 
 class PanopticDataset(Dataset):
@@ -250,7 +250,7 @@ class PanopticDataset(Dataset):
         )
         
         for k, cam_id in enumerate(camera_ids):
-            r = (random.random() * 2 - 1) * 30 if self.is_train else 0
+            r = (random.random() * 2 - 1) * 60 if self.is_train else 0
             trans = get_affine_transform(
                 c, s, r, (self.cfg.DATASET.INPUT_SIZE, self.cfg.DATASET.INPUT_SIZE)
             )
