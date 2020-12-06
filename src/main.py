@@ -56,9 +56,11 @@ def main(hparams):
     # temporal_model = TemporalUnet(in_channels, out_channels, num_feature, 
     #                               input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ, 
     #                               epipolar_transfomer=epipolar) if hparams.temporal_encoder else None
-    model = AggregateModel(resnet, Epipolar(debug=True), None, fuse_model, None,
+    model = AggregateModel(resnet, Epipolar(debug=False), None, fuse_model, None,
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
+    
+    model.load_state_dict(torch.load('/home/wei/master-thesis/pretrain/CutomizeResNet-experiment/pre-train-on-cmu/epoch=2.ckpt')['state_dict'], strict=False)
     data_loader = {
         'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)

@@ -100,9 +100,9 @@ class Epipolar(nn.Module):
                     
                     ax1.scatter(cx,cy,color='yellow')
                     ax2.plot([line_start1[0], line_start2[0]], [line_start1[1], line_start2[1]], alpha=0.5, color='b', zorder=1)
-                    ax2.scatter(xy[0],xy[1],color='red')
                     dx, dy = int(coord2pix(keypt2[i,2,j,0], 1)), int(coord2pix(keypt2[i,2,j,1], 1))
                     ax2.scatter(dx,dy, color='yellow')
+                    ax2.scatter(xy[0],xy[1],color='red')
                 plt.show()
 
             idx = idx.view(1, 1, H, W).expand(-1, C, -1, -1)

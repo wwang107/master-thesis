@@ -63,9 +63,8 @@ class AggregateModel(pl.LightningModule):
         return input_heatmaps
     
     def get_epipolar_heatmap(self,feats, proj_mats, imgs = None, keypoints = None):
-        num_view = feats.size(4)
-        
-        unfused = []
+        num_view = feats.size(4) 
+
         ref_feat = feats[:,:,:,:,0]
         ref_p = proj_mats[:,:,:,0]
         fuse_sum = torch.zeros(ref_feat.size()).to(ref_feat)
@@ -79,12 +78,8 @@ class AggregateModel(pl.LightningModule):
                                     keypoints[..., j] if keypoints != None else None)
             fuse_sum += fuse
         
-        fuse_sum = self.last_conv(fuse_sum.view(*fuse_sum.size(),1))
-
-        for i in range(0,len(num_view)):
-            unfused.append(self.last_conv(x[:,:,:,:,i].view(*x[:,:,:,:,i].size(),1)))
-        unfused = torch.cat(unfused, dim=4)
-        return fuse_sum.view(*fuse_sum.size(),1), unfused.view(*unfused.size(),1)
+        fuse_sum = fuse_sum.view(*fuse_sum.size(),1)
+        return fuse_sum.view(*fuse_sum.size(),1), feats.view(*feats.size(),1)
 
 
     def get_temporal_heatmap(self, x):
