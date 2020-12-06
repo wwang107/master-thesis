@@ -60,18 +60,18 @@ def main(hparams):
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     
-    model.load_state_dict(torch.load('/home/wei/master-thesis/pretrain/CutomizeResNet-experiment/pre-train-on-cmu/epoch=2.ckpt')['state_dict'], strict=False)
+    # model.load_state_dict(torch.load('/home/wei/master-thesis/pretrain/CutomizeResNet-experiment/pre-train-on-cmu/epoch=2.ckpt')['state_dict'], strict=False)
     data_loader = {
         'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)
     }
     trainer = pl.Trainer(gpus=hparams.gpus, 
                          max_epochs= 20,
-                         limit_val_batches=1,
+                         limit_val_batches=0.5,
                         #  limit_test_batches=3,
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ),
-                                    ModelCheckpoint(monitor='validation_step_avg_loss/camera_encoder', save_top_k=3)])
-    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['train'])
+                                    ModelCheckpoint(monitor='validation_step_avg_loss/fusion_net', save_top_k=3)])
+    trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
     trainer.test(test_dataloaders=data_loader['valid'])
 
 

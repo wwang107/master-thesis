@@ -52,7 +52,7 @@ Panoptic Joint Label:
 """
 WIDTH = 1920
 HEIGHT = 1080
-VALIDATION_CAMERA_ID = [(0, 23), (0, 20), (0, 17), (0, 10), (0, 6)]
+VALIDATION_CAMERA_ID = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)]
 TRAINING_CAMERA_ID =  list(set([(0, n) for n in range(0, 31)]) - {(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)})
 HD_IMG = "hdImgs"
 BODY_EDGES = (
@@ -77,9 +77,9 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["160226_haggling1"]
+TRAIN_LIST = ["170407_haggling_a1", "160226_haggling1", "161202_haggling1"]
 
-VAL_LIST = ["160226_haggling1"]
+VAL_LIST = ["160906_pizza1"]
 
 
 class PanopticDataset(Dataset):
@@ -142,10 +142,10 @@ class PanopticDataset(Dataset):
             )
 
             start_frame = (
-                self.num_frames_in_subseq if is_train else len(skel_json_paths) // 4
+                self.num_frames_in_subseq
             )
             step = self.num_frames_in_subseq
-            end_frame = start_frame + 100*step
+            end_frame = len(skel_json_paths)
             print("Loading skeleton...")
             for i in tqdm(range(start_frame, end_frame, step), desc=seq_name):
                 pose3d_subseq = []
@@ -295,14 +295,13 @@ class PanopticDataset(Dataset):
                 )
                 hm[:, :, :, k, f] = heatmap
         
-        # keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
+        keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
         img = img.transpose(2, 0, 1, 3, 4)
         return {
             "heatmap": torch.from_numpy(hm),
             "img": torch.from_numpy(img),
             "keypoint2d": torch.from_numpy(keypoint2d),
             "num_person": num_person,
-            "affine_mat":torch.from_numpy(trans_output),
             "KRT": torch.from_numpy(krt)
         }
 

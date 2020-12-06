@@ -51,6 +51,9 @@ class LogModelHeatmaps(Callback):
 
         input_heatmap = pl_module.get_input_heatmaps(batch_images)
 
+        num_view = input_heatmap.size(4)
+        num_frame = input_heatmap.size(5)
+
         for f in range(0, input_heatmap.size(5),3):
                 visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,input_heatmap[:,:,:,:,:, f])
                 for view, image in enumerate(visualization):
@@ -72,12 +75,8 @@ class LogModelHeatmaps(Callback):
             self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
         
         if pl_module.camera_view_encoder != None:
-            if pl_module.fusion_net == None:
-                out_heatmap = pl_module.camera_view_encoder(input_heatmap)
-            else:
-                fused_heatmap, unfused_heatmap = pl_module.camera_view_encoder(input_heatmap, batch['KRT'])
-                concat_input = torch.cat((fused_heatmap, unfused_heatmap), dim=1)
-                out_heatmap = pl_module.fusion_net(concat_input)
+            out_heatmap = pl_module.camera_view_encoder(input_heatmap)
+            
             for f in range(0, out_heatmap.size(5),3):
                 visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,out_heatmap[:,:,:,:,:, f])
                 for view, image in enumerate(visualization):
@@ -87,6 +86,26 @@ class LogModelHeatmaps(Callback):
             file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('camera_encoder', epoch, global_step)
             file_name = os.path.join(prefix, file_name)
             self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
+        
+        if pl_module.fusion_net != None:
+            proj_mats = batch['KRT']
+            fused_heatmaps = torch.zeros_like(input_heatmap)
+            for f in range(num_frame):
+                for v in range(num_view):
+                    index = [v]
+                    index.extend([i for i in range(num_view) if i != v])
+                    index = torch.LongTensor(index).to(input_heatmap.device)
+                    epipolar_heatmaps, unfused_heatmaps = pl_module.get_epipolar_heatmap(input_heatmap[...,index,f], proj_mats[...,index])
+                    fused_heatmap = pl_module.fusion_net(torch.cat((epipolar_heatmaps, unfused_heatmaps[:,:,:,:,0:1,:]), dim=1))
+                    fused_heatmaps[:,:,:,:,v,f] = fused_heatmap[...,0,0]
+                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,fused_heatmaps[...,f])
+                for view, image in enumerate(visualization):
+                    file_name = os.path.join(prefix, '{}_test_epoch_{}_step_{}_view_{}_frame_{}.png'.format('fusion_net', epoch, global_step, view, f))
+                    cv2.imwrite(str(file_name), image)
+            
+            file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('fusion_net', epoch, global_step)
+            file_name = os.path.join(prefix, file_name)
+            self.visualize_confusion_metrics(file_name, batch_images, fused_heatmaps, batch_gt_keypoint)
         
     def visualize_confusion_metrics(self, file_name, batch_images, batch_heatmaps, batch_gt_keypoint):
         frame = 0
@@ -136,3 +155,11 @@ class LogModelHeatmaps(Callback):
                         for view, image in enumerate(visualization):
                             file_name = os.path.join(prefix, '{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
                             cv2.imwrite(str(file_name), image)
+                
+                if encoder == 'fusion_net':
+                    heatmaps = out[encoder]
+                    vis_fused = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, self.middle_frame],heatmaps)
+                    for view, image in enumerate(vis_fused):
+                        file_name = os.path.join(prefix, 'fused_{}_epoch_{}_step_{}_view_{}.png'.format(encoder, epoch, global_step, view))
+                        cv2.imwrite(str(file_name), image)
+

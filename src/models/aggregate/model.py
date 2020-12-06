@@ -6,7 +6,7 @@ import matplotlib.pylab as plt
 from models.epipolar.EpipolarTransformer import Epipolar
 from utils.multiview import findFundamentalMat
 from utils.utils import find_keypoints_from_heatmaps, match_detected_groundtruth_keypoint, pad_heatmap_with_replicate_frame
-from utils.vis.vis import save_batch_image_with_joints_multi, save_batch_maps
+from utils.vis.vis import save_batch_image_with_joints_multi, save_batch_maps, save_batch_multi_view_with_heatmap
 class AggregateModel(pl.LightningModule):
     '''
     Aggregate Model composed by a resnet that take 256x256 RGB, then output 64x64 heatmaps and by an unet that takes 64x64 heatmaps 
@@ -103,7 +103,7 @@ class AggregateModel(pl.LightningModule):
         param: x the image
         '''
         results = {'input_heatmap_encoder': None,
-                   'temporal_encoder': None, 'camera_view_encoder': None}
+                   'temporal_encoder': None, 'camera_view_encoder': None, 'epipolar_transoformer': None, 'fusion_net': None}
         is_train_input_heatmap_encoder = self.train_input_heatmap_encoder and self.training
 
         with torch.set_grad_enabled(is_train_input_heatmap_encoder):
@@ -112,8 +112,11 @@ class AggregateModel(pl.LightningModule):
             input_heatmaps = input_heatmaps.detach()
 
         if self.epipolar_transformer != None and self.fusion_net != None:
-            fused_heatmaps, unfused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats, x[...,0], keypoint[...,0])
-
+            epipolar_heatmaps, unfused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats, x[...,0], keypoint[...,0] if keypoint != None else None)
+            fused_heatmap = self.fusion_net(torch.cat((epipolar_heatmaps, unfused_heatmaps[:,:,:,:,0:1,:]), dim=1))
+            results['epipolar_transoformer'] = epipolar_heatmaps
+            results['fusion_net'] = fused_heatmap
+            
         results['input_heatmap_encoder'] = input_heatmaps
         if self.temporal_encoder:
             results['temporal_encoder'] = self.get_temporal_heatmap(
@@ -134,7 +137,13 @@ class AggregateModel(pl.LightningModule):
         middle_frame = self.num_frame//2
 
         if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
-            raise NotImplementedError()
+            if out['fusion_net'] != None:
+                fused_heatmap = out['fusion_net']
+                weight = (batch_gt_heatmaps[:, :, :, :, 0:1, :] > 0.1) * \
+                1.0 + (batch_gt_heatmaps[:, :, :, :,0:1, :] <= 0.1) * 0.1
+                t_loss = self.loss(
+                    fused_heatmap, batch_gt_heatmaps[:, :, :, :, 0:1, :], weight)
+                return t_loss
 
         if out['temporal_encoder'] != None and out['camera_view_encoder'] == None:
             temporal_heatmaps = out['temporal_encoder']
@@ -178,6 +187,11 @@ class AggregateModel(pl.LightningModule):
             loss_key = 'training_step/temporal_encoder'
             self.log(loss_key, loss)
             return loss
+        elif self.camera_view_encoder == None and self.temporal_encoder == None:
+            if self.fusion_net != None:
+                loss_key = 'training_step/fusion_net'
+                self.log(loss_key, loss)
+                return loss
         else:
             raise NotImplementedError()
         
@@ -192,12 +206,14 @@ class AggregateModel(pl.LightningModule):
             loss_key = 'validation_step_avg_loss/temporal_encoder'
             self.log(loss_key, loss, on_epoch=True)
             return loss
-        else:
-            raise NotImplementedError()
+        elif self.camera_view_encoder == None and self.temporal_encoder == None:
+            if self.fusion_net != None:
+                loss_key = 'validation_step_avg_loss/fusion_net'
+                self.log(loss_key, loss, on_epoch=True)
+                return loss
     
     def test_step(self, batch, batch_index):
         batch_imgs = batch['img'].float()
-        batch_gt_heatmap = batch['heatmap']
         batch_gt_keypoint = batch['keypoint2d']
         proj_mats = batch['KRT']
         stats = {'temporal_encoder': None, 'camera_view_encoder': None, 'input_heatmap_encoder': None}
@@ -215,17 +231,25 @@ class AggregateModel(pl.LightningModule):
             padded_input_heatmaps = pad_heatmap_with_replicate_frame(input_heatmaps, pad)
             out_heatmap = self.temporal_encoder(padded_input_heatmaps)
             temporal_encoder_metric = self.calculate_confusion_metrics(out_heatmap, batch_gt_keypoint)
-            stats['temporal_encoder'] = temporal_encoder_metric 
+            stats['temporal_encoder'] = temporal_encoder_metric
+
+        if self.fusion_net != None:
+            epipolar_heatmaps, unfused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats)
+            fused_heatmap = self.fusion_net(torch.cat((epipolar_heatmaps, unfused_heatmaps[:,:,:,:,0:1,:]), dim=1))
+            fusion_net_metric = self.calculate_confusion_metrics(fused_heatmap, batch_gt_keypoint)
+            stats['fusion_net'] = fusion_net_metric
         return stats
     
     def test_epoch_end(self, outputs) -> None:
         total_num_test_batch = len(outputs)
         distance_devider = {'temporal_encoder': total_num_test_batch if self.temporal_encoder != None else None, 
                   'camera_view_encoder': total_num_test_batch if self.camera_view_encoder != None else None,
-                  'input_heatmap_encoder': total_num_test_batch if self.input_heatmap_encoder != None else None} 
+                  'input_heatmap_encoder': total_num_test_batch if self.input_heatmap_encoder != None else None,
+                  'fusion_net':total_num_test_batch if self.fusion_net != None else None} 
         result = {'temporal_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.temporal_encoder != None else None, 
                   'camera_view_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.camera_view_encoder != None else None,
-                  'input_heatmap_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.input_heatmap_encoder != None else None}
+                  'input_heatmap_encoder': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.input_heatmap_encoder != None else None,
+                  'fusion_net': {'false positive':0, 'true positive':0, 'false negative':0, 'true positive distance': 0} if self.fusion_net != None else None}
         
         for stats in outputs:
             for encoder in stats.keys():    
