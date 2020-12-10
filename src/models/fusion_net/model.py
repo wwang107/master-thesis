@@ -3,31 +3,35 @@ import pytorch_lightning as pl
 from torch import nn
 from models.unet.blocks import ResidualBlock, TemporalResidualBlock, Encoder, Decoder
 
-class TemporalUnet(pl.LightningModule):
+class FusionNet(pl.LightningModule):
     '''
     An encoder structure that have a hardcoded depth and fixed recpetive field.
     Currently, only support depth of 4 and receptive field of 15
     '''
     def __init__(self, in_channels: int, out_channels: int,num_feature:int, input_frame:int, epipolar_transfomer:nn.Module=None) -> None:
         super().__init__()
-        depth = 2
+        depth = 4
         encoder_kernel_size = (3,3,3)
+        input_frame_at_depth = input_frame
+        # encoder_kernel_size = (3,3,1)
         decoder_kernel_size = (3,3,1)
         f_maps = [num_feature * pow(2,i) for i in range(0, depth)]
         encoders = []
         decoders = []
-        # input_frame_at_depth = input_frame
+        
         for i in range(depth):
-            dilation = pow(3,i)
-            # if input_frame_at_depth == 1:
-            #     dilation = 1
-            #     encoder_kernel_size = (3,3,1)
-            # eff_k = self.effective_kernel_size(encoder_kernel_size[2], dilation)
+            dilation = pow(2,i)
+            eff_k = self.effective_kernel_size(encoder_kernel_size[2], dilation)
+            if input_frame_at_depth <= 1:
+                dilation = 1
+                encoder_kernel_size = (3,3,1)
             if i == 0:
+                # encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = False)
                 encoder = Encoder(TemporalResidualBlock, in_channels, f_maps[i], encoder_kernel_size, dilation, apply_pooling = False)
             else:
+                # encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, pow(2,i), apply_pooling = True, pool_kernel = (2,2,1))
                 encoder = Encoder(TemporalResidualBlock, f_maps[i-1], f_maps[i], encoder_kernel_size, dilation, apply_pooling = True, pool_kernel = (2,2,1))
-            # input_frame_at_depth = self.output_size(input_frame_at_depth, eff_k)
+            input_frame_at_depth = self.output_size(input_frame_at_depth, eff_k)
             encoders.append(encoder)
         
         reversed_f_maps = list(reversed(f_maps))
@@ -124,7 +128,3 @@ class TemporalUnet(pl.LightningModule):
             x = self.conv3(x)
             x = x + residual
             return x
-
-# input = torch.zeros((1,55,64,64,4,15))
-# model = TemporalUnet(55,55,128)
-# out = model(input[:,:,:,:,:,:])
