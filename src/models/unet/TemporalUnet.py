@@ -90,7 +90,10 @@ class TemporalUnet(pl.LightningModule):
         else:
             for j in range(0, len(feats)):
                 ref_feat = feats[j]
-                ref_feat = ref_feat.view(*ref_feat.size(),1)
+                if len(ref_feat.size()) == 5:
+                    pass
+                else:
+                    ref_feat = ref_feat.view(*ref_feat.size(),1)
                 results.append(self.last_conv(ref_feat))
             return torch.stack(results, dim=4)
         

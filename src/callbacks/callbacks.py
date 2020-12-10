@@ -61,6 +61,17 @@ class LogModelHeatmaps(Callback):
                     cv2.imwrite(str(file_name), image)
         
         if pl_module.temporal_encoder != None:
+            if pl_module.fusion_net:
+                proj_mats = batch['KRT']
+                fused_heatmaps = torch.zeros(input_heatmap.size()).to(input_heatmap)
+                for f in range(num_frame):
+                    for v in range(num_view):
+                        index = [v]
+                        index.extend([i for i in range(num_view) if i != v])
+                        index = torch.LongTensor(index).to(input_heatmap.device)
+                        epipolar_heatmaps = pl_module.get_epipolar_heatmap(input_heatmap[...,index,f], proj_mats[..., index])
+                        fused_heatmaps[...,v:v+1,f:f+1] = pl_module.fusion_net(torch.cat((epipolar_heatmaps, input_heatmap[:,:,:,:,v:v+1,f:f+1]), dim=1))
+                input_heatmap = fused_heatmaps
             pad = (pl_module.num_frame // 2, pl_module.num_frame // 2)
             pad_input_heatmap = pad_heatmap_with_replicate_frame(input_heatmap, pad)
             out_heatmap = pl_module.temporal_encoder(pad_input_heatmap)
@@ -86,26 +97,6 @@ class LogModelHeatmaps(Callback):
             file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('camera_encoder', epoch, global_step)
             file_name = os.path.join(prefix, file_name)
             self.visualize_confusion_metrics(file_name, batch_images, out_heatmap, batch_gt_keypoint)
-        
-        if pl_module.fusion_net != None:
-            proj_mats = batch['KRT']
-            fused_heatmaps = torch.zeros_like(input_heatmap)
-            for f in range(num_frame):
-                for v in range(num_view):
-                    index = [v]
-                    index.extend([i for i in range(num_view) if i != v])
-                    index = torch.LongTensor(index).to(input_heatmap.device)
-                    epipolar_heatmaps, unfused_heatmaps = pl_module.get_epipolar_heatmap(input_heatmap[...,index,f], proj_mats[...,index])
-                    fused_heatmap = pl_module.fusion_net(torch.cat((epipolar_heatmaps, unfused_heatmaps[:,:,:,:,0:1,:]), dim=1))
-                    fused_heatmaps[:,:,:,:,v,f] = fused_heatmap[...,0,0]
-                visualization = save_batch_multi_view_with_heatmap(batch_images[:,:,:,:,:, f] ,fused_heatmaps[...,f])
-                for view, image in enumerate(visualization):
-                    file_name = os.path.join(prefix, '{}_test_epoch_{}_step_{}_view_{}_frame_{}.png'.format('fusion_net', epoch, global_step, view, f))
-                    cv2.imwrite(str(file_name), image)
-            
-            file_name = 'confusion_metrics_{}_test_epoch_{}_step_{}'.format('fusion_net', epoch, global_step)
-            file_name = os.path.join(prefix, file_name)
-            self.visualize_confusion_metrics(file_name, batch_images, fused_heatmaps, batch_gt_keypoint)
         
     def visualize_confusion_metrics(self, file_name, batch_images, batch_heatmaps, batch_gt_keypoint):
         frame = 0

@@ -16,7 +16,7 @@ def main():
     cfg = get_cfg_defaults()
     in_channels, out_channels, num_feature = 55, 55, 55
     num_camera_can_see = 5
-    num_frame_can_see = 1
+    num_frame_can_see = 9
     replicate_view = False
     is_train_input_encoder = False
 
@@ -24,7 +24,8 @@ def main():
     backbone = CustomizedResnet(use_pretrained=False)
     fuse_model = TemporalUnet(2*in_channels, out_channels, num_feature, input_frame=1)
     epiploar = Epipolar(debug=False)
-    temporal_model = None
+    temporal_model = TemporalUnet(in_channels, out_channels, num_feature, 
+                                  input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
 
     # Initialize Aggregate model
     agg_model = AggregateModel(backbone, epiploar, None, fuse_model, temporal_model, 
@@ -36,7 +37,7 @@ def main():
 
     # load pretrained weight
     state_dict = torch.load('pretrain/fusion-model/epoch=19.ckpt', map_location=device)['state_dict']
-    agg_model.load_state_dict(state_dict)
+    agg_model.load_state_dict(state_dict, strict=False)
 
     # Test
     data_loader = {

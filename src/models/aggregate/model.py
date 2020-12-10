@@ -238,17 +238,21 @@ class AggregateModel(pl.LightningModule):
             stats['camera_view_encoder'] = camera_encoder_metric
 
         if self.temporal_encoder != None:
+            if self.fusion_net:
+                fused_heatmaps = torch.zeros(input_heatmaps.size()).to(input_heatmaps)
+                for f in range(self.num_frame):
+                    for v in range(self.num_view):
+                        index = [v]
+                        index.extend([i for i in range(self.num_view) if i != v])
+                        index = torch.LongTensor(index).to(input_heatmaps.device)
+                        epipolar_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,index,f], proj_mats[..., index])
+                        fused_heatmaps[...,v:v+1,f:f+1] = self.fusion_net(torch.cat((epipolar_heatmaps, input_heatmaps[:,:,:,:,v:v+1,f:f+1]), dim=1))
+                input_heatmaps = fused_heatmaps
             pad = (self.num_frame // 2, self.num_frame // 2)
             padded_input_heatmaps = pad_heatmap_with_replicate_frame(input_heatmaps, pad)
             out_heatmap = self.temporal_encoder(padded_input_heatmaps)
             temporal_encoder_metric = self.calculate_confusion_metrics(out_heatmap, batch_gt_keypoint)
             stats['temporal_encoder'] = temporal_encoder_metric
-
-        if self.fusion_net != None:
-            epipolar_heatmaps, unfused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats)
-            fused_heatmap = self.fusion_net(torch.cat((epipolar_heatmaps, unfused_heatmaps[:,:,:,:,0:1,:]), dim=1))
-            fusion_net_metric = self.calculate_confusion_metrics(fused_heatmap, batch_gt_keypoint)
-            stats['fusion_net'] = fusion_net_metric
         return stats
     
     def test_epoch_end(self, outputs) -> None:
