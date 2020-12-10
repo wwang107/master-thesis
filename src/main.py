@@ -1,4 +1,3 @@
-from pickle import FALSE
 import torch
 import pytorch_lightning as pl
 from argparse import ArgumentParser
@@ -6,7 +5,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from utils.load_model import load_model_state_dict
 from models.resnet.model import CustomizedResnet
 from models.unet.TemporalUnet import TemporalUnet
-from models.unet.BaselineMultiViewModel import BaselineMultiViewModel
+from models.fusion_net.model import FusionNet
 from models.aggregate.model import AggregateModel
 from config.defualt import get_cfg_defaults
 from data.build import make_dataloader
@@ -51,16 +50,15 @@ def main(hparams):
     #     camera_view_model.load_state_dict(state_dict)
     #     camera_view_model = camera_view_model.temporal_encoder
 
-    fuse_model = TemporalUnet(2*in_channels, out_channels, num_feature, input_frame=1)
+    fuse_model = FusionNet(2*in_channels, out_channels, num_feature, input_frame=1)
 
-    # temporal_model = TemporalUnet(in_channels, out_channels, num_feature, 
-    #                               input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ, 
-    #                               epipolar_transfomer=epipolar) if hparams.temporal_encoder else None
-    model = AggregateModel(resnet, Epipolar(debug=False), None, fuse_model, None,
+    temporal_model = TemporalUnet(in_channels, out_channels, num_feature, 
+                                  input_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
+    model = AggregateModel(resnet, Epipolar(debug=False), None, fuse_model, temporal_model,
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
     
-    # model.load_state_dict(torch.load('/home/wei/master-thesis/pretrain/CutomizeResNet-experiment/pre-train-on-cmu/epoch=2.ckpt')['state_dict'], strict=False)
+    model.load_state_dict(torch.load('/home/wei/master-thesis/pretrain/fusion-model/epoch=19.ckpt')['state_dict'], strict=False)
     data_loader = {
         'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)

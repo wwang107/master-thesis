@@ -79,8 +79,7 @@ class AggregateModel(pl.LightningModule):
             fuse_sum += fuse
         
         fuse_sum = fuse_sum.view(*fuse_sum.size(),1)
-        return fuse_sum.view(*fuse_sum.size(),1), feats.view(*feats.size(),1)
-
+        return fuse_sum.view(*fuse_sum.size(),1)
 
     def get_temporal_heatmap(self, x):
         temporal_heatmaps = self.temporal_encoder(x)
@@ -103,7 +102,7 @@ class AggregateModel(pl.LightningModule):
         param: x the image
         '''
         results = {'input_heatmap_encoder': None,
-                   'temporal_encoder': None, 'camera_view_encoder': None, 'epipolar_transoformer': None, 'fusion_net': None}
+                   'temporal_encoder': None, 'camera_view_encoder': None, 'fusion_net': None}
         is_train_input_heatmap_encoder = self.train_input_heatmap_encoder and self.training
 
         with torch.set_grad_enabled(is_train_input_heatmap_encoder):
@@ -112,15 +111,27 @@ class AggregateModel(pl.LightningModule):
             input_heatmaps = input_heatmaps.detach()
 
         if self.epipolar_transformer != None and self.fusion_net != None:
-            epipolar_heatmaps, unfused_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,0], proj_mats, x[...,0], keypoint[...,0] if keypoint != None else None)
-            fused_heatmap = self.fusion_net(torch.cat((epipolar_heatmaps, unfused_heatmaps[:,:,:,:,0:1,:]), dim=1))
+            fused_heatmaps = torch.zeros(input_heatmaps.size()).to(input_heatmaps)
+            with torch.no_grad():
+                for f in range(self.num_frame):
+                    for v in range(self.num_view):
+                        index = [v]
+                        index.extend([i for i in range(self.num_view) if i != v])
+                        index = torch.LongTensor(index).to(input_heatmaps.device)
+                        epipolar_heatmaps = self.get_epipolar_heatmap(input_heatmaps[...,index,f], proj_mats[..., index], x[..., index,f], keypoint[...,f] if keypoint != None else None)
+                        fused_heatmaps[...,v:v+1,f:f+1] = self.fusion_net(torch.cat((epipolar_heatmaps, input_heatmaps[:,:,:,:,v:v+1,f:f+1]), dim=1))
+
             results['epipolar_transoformer'] = epipolar_heatmaps
-            results['fusion_net'] = fused_heatmap
+            results['fusion_net'] = fused_heatmaps
             
         results['input_heatmap_encoder'] = input_heatmaps
         if self.temporal_encoder:
-            results['temporal_encoder'] = self.get_temporal_heatmap(
-                input_heatmaps)
+            if self.fusion_net != None:
+                results['temporal_encoder'] = self.get_temporal_heatmap(
+                    fused_heatmaps)
+            else:
+                results['temporal_encoder'] = self.get_temporal_heatmap(
+                    input_heatmaps)
         if self.camera_view_encoder:
             results['camera_view_encoder'] = self.get_camera_heatmap(
                 input_heatmaps, proj_mats
