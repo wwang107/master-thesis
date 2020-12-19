@@ -11,7 +11,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
     since = time.time()
 
     model = model.to(device)
-    best_model_wts = copy.deepcopy(model.state_dict())
     lowest_loss = float('inf')
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
@@ -85,8 +84,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
         time_elapsed // 60, time_elapsed % 60))
     print('lowest loss val: {:4f}'.format(lowest_loss))
 
-    # load best model weights
-    model.load_state_dict(best_model_wts)
     return model, epoch_loss
 
 def save_checkpoint(model, optimizer, epoch, loss, path, name):
@@ -94,8 +91,8 @@ def save_checkpoint(model, optimizer, epoch, loss, path, name):
     torch.save(
         {
         'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
+        'model_state_dict': copy.deepcopy(model.state_dict()),
+        'optimizer_state_dict': copy.deepcopy(optimizer.state_dict()),
         'loss': loss
         }, 
         Path.joinpath(Path(path), '{}_{}.pth'.format(name, epoch)))
