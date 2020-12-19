@@ -2,9 +2,9 @@ import torch
 import os
 from config.defualt import get_cfg_defaults
 from data.build import make_dataloader
-from model.resnet.resnet import CustomizedResnet
+from models.resnet.model import CustomizedResnet
 from trainer.model_trainer import train_model
-from model.losses import WeightedRegLoss
+from models.losses import WeightedRegLoss
 from utils.writer.writer import TensorBoardWriter
 from pathlib import Path
 from datetime import datetime
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         load_checkpoint(
         model,
         optimizer,
-        '/home/weiwang/master-thesis/runs/2020-10-02-16:52:11/checkpoint_15.pth')
+        'pretrain/CutomizeResNet-experiment/best_13.pth')
     trained_model, loss = train_model(model, data_loaders, loss, optimizer, device, checkpt_dir=log_dir, writer=tsboard, num_epochs= 20)
 
 
