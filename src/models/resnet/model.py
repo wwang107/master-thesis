@@ -34,12 +34,17 @@ class CustomizedResnet(nn.Module):
        self.encoder = nn.Sequential(*list(resnet18.children())[:-2])
        self.decoder = nn.Sequential(
            nn.ConvTranspose2d(512, 512, 2, stride=2),
+           nn.ReLU(),
            ResidualBlock(512,512,3),
            nn.ConvTranspose2d(512, 256, 2, stride=2),
+           nn.ReLU(),
            ResidualBlock(256,256,3),
            nn.ConvTranspose2d(256, 128, 2, stride=2),
+           nn.ReLU(),
            ResidualBlock(128,128,3),
-           nn.Conv2d(128,55,1)
+           nn.ConvTranspose2d(128, 55, 2, stride=2),
+           nn.ReLU(),
+           ResidualBlock(55,55,3),
        )
  
    def forward(self, x):

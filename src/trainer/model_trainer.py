@@ -53,13 +53,10 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                 if i % 100 == 0:    # print every 100 mini-batches
                     print('%s: [%d, %3d/%3d] loss: %.3f' %
                           (phase, epoch, i,len(dataloaders[phase]), loss.item()))
-                    if phase == 'val':
-                        valid_images['prediction'].append(
-                            cv2.cvtColor(save_batch_maps(images, outputs, masks),cv2.COLOR_BGR2RGB))
-                        valid_images['groundtruth'].append(
-                            cv2.cvtColor(save_batch_maps(images, heatmaps, masks),cv2.COLOR_BGR2RGB))
-                        valid_images['direction-keypoint'].append(
-                            cv2.cvtColor(save_batch_maps(images, outputs, masks),cv2.COLOR_BGR2RGB))
+                    cv2.imwrite('{}/{}_pred_{}_{}.png'.format(checkpt_dir,phase,epoch,i),
+                                save_batch_maps(images, outputs, masks))
+                    cv2.imwrite('{}/{}_gt_{}_{}.png'.format(checkpt_dir,phase,epoch,i),
+                                save_batch_maps(images, heatmaps, masks))
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
 
@@ -77,7 +74,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                     
                 
                 writer.add_scalar('valid', epoch_loss, epoch)
-                writer.add_images('valid', valid_images, epoch)
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
