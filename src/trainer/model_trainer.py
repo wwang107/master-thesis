@@ -5,13 +5,12 @@ from torch import mode
 from torch.optim import optimizer
 from utils.vis.vis import save_batch_maps
 from pathlib import Path
-
+import cv2
 
 def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, writer=None, num_epochs=20):
     since = time.time()
 
     model = model.to(device)
-    best_model_wts = copy.deepcopy(model.state_dict())
     lowest_loss = float('inf')
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
@@ -46,20 +45,21 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
+                # cv2.imwrite('test.png',save_batch_maps(images, heatmaps, masks))
 
                 # statistics
                 running_loss += loss.item()
                 
-                if i % 100 == 99:    # print every 100 mini-batches
+                if i % 100 == 0:    # print every 100 mini-batches
                     print('%s: [%d, %3d/%3d] loss: %.3f' %
                           (phase, epoch, i,len(dataloaders[phase]), loss.item()))
                     if phase == 'val':
                         valid_images['prediction'].append(
-                            save_batch_maps(images, outputs, masks))
+                            cv2.cvtColor(save_batch_maps(images, outputs, masks),cv2.COLOR_BGR2RGB))
                         valid_images['groundtruth'].append(
-                            save_batch_maps(images, heatmaps, masks))
+                            cv2.cvtColor(save_batch_maps(images, heatmaps, masks),cv2.COLOR_BGR2RGB))
                         valid_images['direction-keypoint'].append(
-                            save_batch_maps(images, outputs, masks))
+                            cv2.cvtColor(save_batch_maps(images, outputs, masks),cv2.COLOR_BGR2RGB))
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
 
@@ -73,7 +73,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                                 loss.item(), checkpt_dir, 'checkpoint')
                 if epoch_loss < lowest_loss:
                     lowest_loss = epoch_loss
-                    best_model_wts = copy.deepcopy(model.state_dict())
                     save_checkpoint(model, optimizer, epoch, epoch_loss, checkpt_dir, 'best')
                     
                 
@@ -85,8 +84,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
         time_elapsed // 60, time_elapsed % 60))
     print('lowest loss val: {:4f}'.format(lowest_loss))
 
-    # load best model weights
-    model.load_state_dict(best_model_wts)
     return model, epoch_loss
 
 def save_checkpoint(model, optimizer, epoch, loss, path, name):
@@ -94,8 +91,8 @@ def save_checkpoint(model, optimizer, epoch, loss, path, name):
     torch.save(
         {
         'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
+        'model_state_dict': copy.deepcopy(model.state_dict()),
+        'optimizer_state_dict': copy.deepcopy(optimizer.state_dict()),
         'loss': loss
         }, 
         Path.joinpath(Path(path), '{}_{}.pth'.format(name, epoch)))

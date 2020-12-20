@@ -16,6 +16,7 @@ import os
 import os.path
 
 import cv2
+cv2.setNumThreads(0)
 import json_tricks as json
 import numpy as np
 from torch.utils.data import Dataset

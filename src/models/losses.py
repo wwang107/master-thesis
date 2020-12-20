@@ -10,7 +10,7 @@ class WeightedRegLoss(nn.Module):
         assert pred.size() == gt.size()
         mask = mask[:, None, :, :].expand_as(pred)
         weight = torch.where(
-            torch.eq(mask, 1), torch.tensor([fg_weight]).cuda(), torch.tensor([bg_weight]).cuda())
+            torch.eq(mask, 0.5), torch.tensor([fg_weight]).cuda(), torch.tensor([bg_weight]).cuda())
         loss = ((pred - gt)**2) * weight
 
         loss = loss.mean() * 1000

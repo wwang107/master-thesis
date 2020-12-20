@@ -153,6 +153,8 @@ def save_batch_maps(
             .byte()\
             .permute(1, 2, 0)\
             .cpu().numpy()
+        
+        image =  np.flip(image,axis=2)
 
         # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         maps = batch_maps[i]

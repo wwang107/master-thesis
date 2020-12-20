@@ -5,6 +5,7 @@ pretrain/
 dataset/
 backup/
 runs/
+demo/
 
 __pycache__
 .ipynb_checkpoints
