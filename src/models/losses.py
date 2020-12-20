@@ -6,12 +6,10 @@ class WeightedRegLoss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, pred, gt, mask, fg_weight=1.0, bg_weight=0.1):
+    def forward(self, pred, gt, mask):
         assert pred.size() == gt.size()
         mask = mask[:, None, :, :].expand_as(pred)
-        weight = torch.where(
-            torch.eq(mask, 0.5), torch.tensor([fg_weight]).cuda(), torch.tensor([bg_weight]).cuda())
-        loss = ((pred - gt)**2) * weight
+        loss = ((pred - gt)**2) * mask
 
         loss = loss.mean() * 1000
         return loss
