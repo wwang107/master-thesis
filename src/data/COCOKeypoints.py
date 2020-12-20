@@ -78,7 +78,7 @@ class CocoKeypoints(CocoDataset):
 
     def get_joints(self, anno):
         num_people = len(anno)
-        max_person = 15
+        max_person = 20
         joints = np.zeros((max_person, self.num_joints, 3))
 
         for i, obj in enumerate(anno):
