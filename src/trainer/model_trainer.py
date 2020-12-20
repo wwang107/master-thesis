@@ -45,7 +45,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
-                # cv2.imwrite('test.png',save_batch_maps(images, heatmaps, masks))
 
                 # statistics
                 running_loss += loss.item()
