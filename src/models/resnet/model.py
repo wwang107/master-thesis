@@ -44,7 +44,7 @@ class CustomizedResnet(nn.Module):
            ResidualBlock(128,128,3),
            nn.ConvTranspose2d(128, 55, 2, stride=2),
            nn.ReLU(),
-           ResidualBlock(55,55,3),
+           nn.Conv2d(55,55,3,padding=1)
        )
  
    def forward(self, x):

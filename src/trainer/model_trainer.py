@@ -53,7 +53,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                 if i % 100 == 0:    # print every 100 mini-batches
                     print('%s: [%d, %3d/%3d] loss: %.3f' %
                           (phase, epoch, i,len(dataloaders[phase]), loss.item()))
-                    if phase == 'valid':
+                    if phase == 'val':
                         cv2.imwrite('{}/{}_pred_{}_{}.png'.format(checkpt_dir,phase,epoch,i),
                                     save_batch_maps(images, outputs, masks))
                         if epoch == 0:
