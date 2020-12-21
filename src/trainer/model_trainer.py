@@ -7,12 +7,12 @@ from utils.vis.vis import save_batch_maps
 from pathlib import Path
 import cv2
 
-def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, writer=None, num_epochs=20):
+def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, writer=None, num_epochs=20, start_epoch = 0):
     since = time.time()
 
     model = model.to(device)
     lowest_loss = float('inf')
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
@@ -46,15 +46,16 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
 
                 # statistics
                 running_loss += loss.item()
+                # cv2.imwrite('test.png', save_batch_maps(images, outputs))
                 if i % 100 == 0:    # print every 100 mini-batches
                     print('%s: [%d, %3d/%3d] loss: %.3f' %
                           (phase, epoch, i,len(dataloaders[phase]), loss.item()))
                     if phase == 'val':
                         cv2.imwrite('{}/{}_pred_{}_{}.png'.format(checkpt_dir,phase,epoch,i),
-                                    save_batch_maps(images, outputs, masks))
+                                    save_batch_maps(images, outputs))
                         if epoch == 0:
                             cv2.imwrite('{}/{}_gt_{}_{}.png'.format(checkpt_dir, phase, epoch,i),
-                                        save_batch_maps(images, heatmaps, masks))
+                                        save_batch_maps(images, heatmaps))
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
 

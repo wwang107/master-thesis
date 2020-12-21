@@ -127,7 +127,7 @@ def make_heatmaps(image, heatmaps):
 def save_batch_maps(
         batch_image,
         batch_maps,
-        batch_mask,
+        batch_mask = None,
         normalize=True
 ):
     if normalize:
