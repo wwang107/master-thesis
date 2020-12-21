@@ -38,7 +38,7 @@ class CocoKeypoints(CocoDataset):
         mask = np.array(self.get_mask(anno, idx), dtype=np.uint8)
         anno = [obj for obj in anno if obj["iscrowd"] == 0 or obj["num_keypoints"] > 0]
 
-        joints, num_people = self.get_joints(anno)
+        joints = self.get_joints(anno)
 
         if self.transforms:
             img, mask, joints = self.transforms(img, mask, joints)
@@ -53,7 +53,6 @@ class CocoKeypoints(CocoDataset):
             "heatmaps": heatmap,
             "joints": joints,
             "directional_keypoints": dir_keypoints,
-            "num_people":num_people
         }
 
     def get_mask(self, anno, idx):
@@ -78,12 +77,12 @@ class CocoKeypoints(CocoDataset):
 
     def get_joints(self, anno):
         num_people = len(anno)
-        max_person = 20
-        joints = np.zeros((max_person, self.num_joints, 3))
+
+        joints = np.zeros((num_people, self.num_joints, 3))
 
         for i, obj in enumerate(anno):
             joints[i, : self.num_joints, :3] = np.array(obj["keypoints"]).reshape(
                 [-1, 3]
             )
 
-        return joints, num_people
+        return joints
