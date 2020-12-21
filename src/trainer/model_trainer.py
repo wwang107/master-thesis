@@ -18,8 +18,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
 
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
-            valid_images = {'prediction': [],
-                            'groundtruth': [], 'direction-keypoint': []}
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:

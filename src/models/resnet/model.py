@@ -10,13 +10,16 @@ class ResidualBlock(nn.Module):
        padding = kernel_size//2
        self.conv1 = nn.Sequential(
            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-           nn.ReLU())
+           nn.ReLU(), 
+           nn.BatchNorm2d(out_channels))
        self.conv2 = nn.Sequential(
            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-           nn.ReLU())
+           nn.ReLU(),  
+           nn.BatchNorm2d(out_channels))
        self.conv3 = nn.Sequential(
            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-           nn.ReLU())
+           nn.ReLU(),  
+           nn.BatchNorm2d(out_channels))
  
    def forward(self, x):
        residual = x
@@ -33,16 +36,16 @@ class CustomizedResnet(nn.Module):
        resnet18 = models.resnet18(pretrained=use_pretrained)
        self.encoder = nn.Sequential(*list(resnet18.children())[:-2])
        self.decoder = nn.Sequential(
-           nn.ConvTranspose2d(512, 512, 2, stride=2),
-           nn.ReLU(),
-           ResidualBlock(512,512,3),
            nn.ConvTranspose2d(512, 256, 2, stride=2),
-           nn.ReLU(),
+           nn.ReLU(),nn.BatchNorm2d(256),
            ResidualBlock(256,256,3),
            nn.ConvTranspose2d(256, 128, 2, stride=2),
-           nn.ReLU(),
+           nn.ReLU(),nn.BatchNorm2d(128),
            ResidualBlock(128,128,3),
            nn.ConvTranspose2d(128, 55, 2, stride=2),
+           nn.ReLU(),nn.BatchNorm2d(55),
+           ResidualBlock(55,55,3),
+           nn.ConvTranspose2d(55, 55, 2, stride=2),
            nn.ReLU(),
            nn.Conv2d(55,55,3,padding=1)
        )

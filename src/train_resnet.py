@@ -39,6 +39,8 @@ if __name__ == "__main__":
     data_loaders = {'train': make_dataloader(cfg, is_train=True),
                     'val': make_dataloader(cfg, is_train=False)}
     model = CustomizedResnet()
+    print(model)
+    model.train()
     optimizer = torch.optim.Adam(model.parameters())
     loss = WeightedRegLoss()
     print(torch.cuda.is_available())
