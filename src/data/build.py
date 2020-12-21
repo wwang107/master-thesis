@@ -87,7 +87,7 @@ def make_dataloader(cfg, dataset_name='coco', is_train=True, replicate_view=Fals
     if dataset_name == 'coco':
         dataset = build_dataset(cfg, is_train)
         data_loader = torch.utils.data.DataLoader(
-            dataset, num_workers=8, batch_size=16)
+            dataset, num_workers=8, batch_size=16, collate_fn=collate_fn)
     else:
         dataset = build_CMU_dataset(cfg, is_train, replicate_view)
         is_shuffle = True if is_train else False
@@ -101,6 +101,26 @@ def make_dataloader(cfg, dataset_name='coco', is_train=True, replicate_view=Fals
             collate_fn=None)
     
     return data_loader
+
+
+def collate_fn(batch):
+    r"""
+        batch: is a list of dictionary with (image, heatmap, joints, directional_keypoints)
+    """
+    collated_batch = {'images': [], 'heatmaps': [], 'masks': [],
+                      'joints': [], 'directional_keypoints': []}
+
+    for sample in batch:
+        for key in sample:
+            ele = sample[key]
+            if type(ele).__name__ == 'ndarray':
+                ele = torch.from_numpy(ele)
+            collated_batch[key].append(ele)
+
+    collated_batch['images'] = torch.stack(collated_batch['images'])
+    collated_batch['heatmaps'] = torch.stack(collated_batch['heatmaps'])
+    collated_batch['masks'] = torch.stack(collated_batch['masks'])
+    return collated_batch
 
 
 def make_test_dataloader(cfg):
