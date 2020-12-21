@@ -33,7 +33,7 @@ def build_transforms(cfg, is_train=True):
 
     if is_train:
         transforms = T.Compose(
-            [
+            [   
                 T.RandomAffineTransform(
                     input_size,
                     output_size,
@@ -42,13 +42,13 @@ def build_transforms(cfg, is_train=True):
                     max_scale,
                     max_translate,
                 ),
-                T.RandomHorizontalFlip(coco_flip_index, output_size, prob=1),
+                T.RandomHorizontalFlip(coco_flip_index, output_size, prob=0.5),
                 T.ToTensor()
             ]
         )
     else:
         transforms = T.Compose(
-            [
+            [   
                 T.Resize(input_size, output_size),
                 T.ToTensor()
             ]

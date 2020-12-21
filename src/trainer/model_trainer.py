@@ -37,7 +37,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(images)
+                    outputs = model(images.float())
                     loss = criterion(outputs, heatmaps, masks)
                     # backward + optimize only if in training phase
                     if phase == 'train':
@@ -46,7 +46,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
 
                 # statistics
                 running_loss += loss.item()
-                
                 if i % 100 == 0:    # print every 100 mini-batches
                     print('%s: [%d, %3d/%3d] loss: %.3f' %
                           (phase, epoch, i,len(dataloaders[phase]), loss.item()))

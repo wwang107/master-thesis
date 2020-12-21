@@ -19,6 +19,8 @@ import cv2
 cv2.setNumThreads(0)
 import json_tricks as json
 import numpy as np
+import torch
+from torchvision.transforms import Normalize
 from torch.utils.data import Dataset
 
 from pycocotools.cocoeval import COCOeval
@@ -49,6 +51,7 @@ class CocoDataset(Dataset):
         self.coco = COCO(self._get_anno_file_name())
         self.ids = list(self.coco.imgs.keys())
         self.transform = transform
+        self.normalize = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         self.target_transform = target_transform
 
         cats = [cat['name']
@@ -114,7 +117,10 @@ class CocoDataset(Dataset):
         )
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
+        img = img/255
+        img = torch.from_numpy(img)
+        img = self.normalize(img.permute(2,0,1))
+        img = img.permute(1,2,0).numpy()
         if self.transform is not None:
             img = self.transform(img)
 
