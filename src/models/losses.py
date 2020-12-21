@@ -15,6 +15,21 @@ class WeightedRegLoss(nn.Module):
         loss = loss.sum()/denom
         return loss
 
+class BalancedRegLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, pred, gt, mask):
+        assert pred.size() == gt.size()
+        mask = mask[:, None, :, :].expand_as(pred)
+        pos_ind = mask >= 0.5
+        pos_num = max(pos_ind.sum(),1)
+        neg_ind = torch.logical_not(pos_ind)
+        neg_num = max(neg_ind.sum(),1)
+
+        eu_loss = ((pred - gt)**2)
+        loss = eu_loss[pos_ind].sum() / pos_num + eu_loss[neg_ind].sum() / neg_num
+        return loss
 class RegLoss(nn.Module):
     def __init__(self):
         super().__init__()
