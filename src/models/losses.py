@@ -48,7 +48,7 @@ class RegLoss(nn.Module):
         return loss
 
 class AnchorLoss(nn.Module):
-    def __init__(self, gamma = 2.0):
+    def __init__(self, gamma = 0.5):
         super().__init__() 
         self.gamma = gamma
         self.bce = nn.BCEWithLogitsLoss(reduction='none')
@@ -63,8 +63,8 @@ class AnchorLoss(nn.Module):
         q_star =  (gt >= 0.5) * gt
         
         scale = neg_cls_mask * (1 + pred-q_star).pow(self.gamma) + pos_cls_mask
-        eu_loss = ((pred - gt)**2)
-        loss = scale * eu_loss
+        loss = self.bce(pred,gt)
+        loss = scale * loss
         loss = loss.mean()
 
         return loss
