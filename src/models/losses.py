@@ -30,6 +30,8 @@ class BalancedRegLoss(nn.Module):
         eu_loss = ((pred - gt)**2)
         loss = eu_loss[pos_ind].sum() / pos_num + eu_loss[neg_ind].sum() / neg_num
         return loss
+
+
 class RegLoss(nn.Module):
     def __init__(self):
         super().__init__()
@@ -44,6 +46,28 @@ class RegLoss(nn.Module):
 
         loss = loss.mean()
         return loss
+
+class AnchorLoss(nn.Module):
+    def __init__(self, gamma = 2.0):
+        super().__init__() 
+        self.gamma = gamma
+        self.bce = nn.BCEWithLogitsLoss(reduction='none')
+    
+    def forward(self, pred, gt, mask):
+        assert pred.size() == gt.size()
+        mask = mask[:, None, :, :].expand_as(pred)
+        
+        neg_mask = (mask <= 0.5) * 1.0
+        pos_mask = 1.0 - neg_mask
+        q_star =  (gt >= 0.5) * gt
+        
+        scale = neg_mask * (1 + pred-q_star).pow(self.gamma) + pos_mask
+        loss = self.bce(pred,gt)
+        loss = scale * loss
+        loss = loss.mean()
+
+        return loss
+
 
 
 class JointsMSELoss(nn.Module):
