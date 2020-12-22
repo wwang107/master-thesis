@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
 
 
 class WeightedRegLoss(nn.Module):
@@ -51,23 +53,35 @@ class AnchorLoss(nn.Module):
     def __init__(self, gamma = 0.5):
         super().__init__() 
         self.gamma = gamma
-        self.bce = nn.BCEWithLogitsLoss(reduction='none')
+        self.bce = nn.BCELoss(reduction='none')
+        self.slack = 0.05
     
     def forward(self, pred, gt, mask):
-        assert pred.size() == gt.size()
-        # mask = mask[:, None, :, :].expand_as(pred)
-        
-        pos_cls_mask = (gt >= 0.01) * 1.0
-        neg_cls_mask = (gt < 0.01) * 1.0
+        input = F.sigmoid(pred)
 
-        q_star =  (gt >= 0.5) * gt
-        
-        scale = neg_cls_mask * (1 + pred-q_star).pow(self.gamma) + pos_cls_mask
-        loss = self.bce(pred,gt)
-        loss = scale * loss
-        loss = loss.mean()
+        target_mask = (gt > 0.01).type('torch.FloatTensor').cuda()
+        neg_mask = (1 - target_mask)
 
-        return loss
+        max_mask = (gt > 0.5).type('torch.FloatTensor').cuda()
+        max_pos = input * max_mask
+        max_pos = max_pos.max(2)[0].max(2)[0]
+
+        max_target = (max_mask * gt).max(2)[0].max(2)[0]
+        pos = Variable(torch.ones((gt.size(0), gt.size(1)))).cuda() * (1 + self.slack)
+        pos[max_target > 0] = max_pos[max_target > 0]  # pos == 1 when part annotation does not exist
+        pos = (pos.view(input.size(0), input.size(1), 1, 1) - self.slack).clamp(min=0).detach()
+
+        neg_loss = -(input + (1 - pos)).pow(self.gamma) * torch.log((1 - input).clamp(min=1e-20))
+        neg_loss = neg_mask * neg_loss
+
+        pos_loss = -torch.log(input.clamp(min=1e-20))
+        bg_loss = -torch.log((1-input).clamp(min=1e-20))
+
+        bg_loss = target_mask * bg_loss
+
+        loss = (gt * pos_loss + (1 - gt) * bg_loss) + neg_loss
+
+        return loss.mean()
 
 
 
