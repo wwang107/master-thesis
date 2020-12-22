@@ -23,11 +23,13 @@ class BalancedRegLoss(nn.Module):
     def forward(self, pred, gt, mask):
         assert pred.size() == gt.size()
         mask = mask[:, None, :, :].expand_as(pred)
-        body_mask = mask > 0.5
+        
         joint_mask = gt >= 0.1
-        bg_mask = torch.logical_not(torch.logcal_and(body_mask,joint_mask))
-        body_px_num = max(body_mask.sum(),1)
+        body_mask = torch.logical_xor(mask > 0.5, joint_mask)
+        bg_mask = torch.logical_not(torch.logical_and(body_mask,joint_mask))
+        
         joints_px_num = max(joint_mask.sum(),1)
+        body_px_num = max(body_mask.sum(),1)
         bg_px_num = max(bg_mask.sum(),1)
          
         # pos_ind = gt >= 0.1
@@ -37,7 +39,7 @@ class BalancedRegLoss(nn.Module):
 
         eu_loss = ((pred - gt)**2)
         joint_loss = eu_loss[joint_mask].sum()
-        body_loss = (eu_loss[body_mask] - joint_loss).sum()
+        body_loss = eu_loss[body_mask].sum()
         bg_loss = eu_loss[bg_mask].sum()
         loss = joint_loss / joints_px_num + body_loss / body_px_num + bg_loss / bg_px_num
         return loss
