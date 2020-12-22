@@ -41,7 +41,7 @@ if __name__ == "__main__":
     model = CustomizedResnet()
     print(model)
     optimizer = torch.optim.Adam(model.parameters())
-    loss = AnchorLoss()
+    loss = BalancedRegLoss()
     print("cuad available: ", torch.cuda.is_available())
     model, optimizer, epoch, _ = load_checkpoint(model, optimizer, 'runs/2020-12-21-15:51:11/best_84.pth')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

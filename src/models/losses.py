@@ -22,8 +22,8 @@ class BalancedRegLoss(nn.Module):
 
     def forward(self, pred, gt, mask):
         assert pred.size() == gt.size()
-        mask = mask[:, None, :, :].expand_as(pred)
-        pos_ind = mask >= 0.5
+        # mask = mask[:, None, :, :].expand_as(pred)
+        pos_ind = gt >= 0.1
         pos_num = max(pos_ind.sum(),1)
         neg_ind = torch.logical_not(pos_ind)
         neg_num = max(neg_ind.sum(),1)
@@ -52,11 +52,11 @@ class AnchorLoss(nn.Module):
     def __init__(self, gamma = 0.5):
         super().__init__() 
         self.gamma = gamma
-        self.bce = nn.BCELoss(reduction='none')
+        self.bce = F.binary_cross_entropy
         self.slack = 0.05
     
     def forward(self, pred, gt, mask):
-        input = F.sigmoid(pred)
+        input = torch.sigmoid(pred)
 
         target_mask = (gt > 0.01).type('torch.FloatTensor').cuda()
         neg_mask = (1 - target_mask)
