@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 
 class WeightedRegLoss(nn.Module):
@@ -67,7 +66,7 @@ class AnchorLoss(nn.Module):
         max_pos = max_pos.max(2)[0].max(2)[0]
 
         max_target = (max_mask * gt).max(2)[0].max(2)[0]
-        pos = Variable(torch.ones((gt.size(0), gt.size(1)))).cuda() * (1 + self.slack)
+        pos = torch.ones(gt.size(0), gt.size(1).cuda() * (1 + self.slack)
         pos[max_target > 0] = max_pos[max_target > 0]  # pos == 1 when part annotation does not exist
         pos = (pos.view(input.size(0), input.size(1), 1, 1) - self.slack).clamp(min=0).detach()
 
