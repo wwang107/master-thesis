@@ -23,7 +23,11 @@ class BalancedRegLoss(nn.Module):
     def forward(self, pred, gt, mask):
         assert pred.size() == gt.size()
         mask = mask[:, None, :, :].expand_as(pred)
-        
+
+        mask = torch.flatten(mask, start_dim=1)
+        pred = torch.flatten(pred, start_dim=1)
+        gt = torch.flatten(gt, start_dim=1)
+
         joint_mask = gt >= 0.1
         body_mask = torch.logical_xor(mask > 0.5, joint_mask)
         bg_mask = torch.logical_not(torch.logical_and(body_mask,joint_mask))
