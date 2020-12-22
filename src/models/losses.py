@@ -57,14 +57,14 @@ class AnchorLoss(nn.Module):
         assert pred.size() == gt.size()
         # mask = mask[:, None, :, :].expand_as(pred)
         
-        pos_cls_mask = (gt >= 0.1) * 1.0
-        neg_cls_mask = (gt < 0.1) * 1.0
+        pos_cls_mask = (gt >= 0.01) * 1.0
+        neg_cls_mask = (gt < 0.01) * 1.0
 
         q_star =  (gt >= 0.5) * gt
         
         scale = neg_cls_mask * (1 + pred-q_star).pow(self.gamma) + pos_cls_mask
-        loss = self.bce(pred,gt)
-        loss = scale * loss
+        eu_loss = ((pred - gt)**2)
+        loss = scale * eu_loss
         loss = loss.mean()
 
         return loss
