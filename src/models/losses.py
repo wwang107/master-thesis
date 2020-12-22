@@ -33,7 +33,7 @@ class BalancedRegLoss(nn.Module):
         vis_weight = joint_mask.max(2, keepdim=True)[0] * 1.0
 
         body_mask = torch.logical_xor(mask > 0.5, joint_mask)
-        bg_mask = torch.logical_not(torch.logical_and(body_mask,joint_mask))
+        bg_mask = torch.logical_not(torch.logical_or(body_mask,joint_mask))
         
         joints_px_num = max(joint_mask.sum(),1)
         body_px_num = max(body_mask.sum(),1)
