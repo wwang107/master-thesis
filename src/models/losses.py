@@ -47,7 +47,7 @@ class BalancedRegLoss(nn.Module):
         eu_loss = ((pred - gt)**2) * vis_weight
         # joint_loss = eu_loss[joint_mask].sum()
         body_loss = (eu_loss[mask] * 1.0).mean()
-        bg_loss = eu_loss[torch.logical_not(mask)].mean()
+        bg_loss = (eu_loss[torch.logical_not(mask)] * 0.1 ).mean()
         loss = body_loss + bg_loss        
         return loss
 
