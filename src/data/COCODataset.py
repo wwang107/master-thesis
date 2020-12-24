@@ -118,7 +118,9 @@ class CocoDataset(Dataset):
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = img/255
-        img = (img - np.asarray([0.485, 0.456, 0.406]))/np.asarray([0.229, 0.224, 0.225])
+        img = torch.from_numpy(img)
+        img = self.normalize(img.permute(2,0,1))
+        img = img.permute(1,2,0).numpy()
         if self.transform is not None:
             img = self.transform(img)
 
