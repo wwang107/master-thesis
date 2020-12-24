@@ -67,7 +67,8 @@ class CustomizedResnet(nn.Module):
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(2048, 1024, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(1024),
 			nn.Conv2d(1024, 512, 1, bias=False), nn.ReLU(), nn.BatchNorm2d(512),
-			FCNHead(512, 55)
+			nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(256),
+			FCNHead(256, 55)
 		)
 
    def forward(self, x):
