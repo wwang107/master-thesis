@@ -32,12 +32,12 @@ class BalancedRegLoss(nn.Module):
         
         vis_weight = joint_mask.max(2, keepdim=True)[0] * 1.0
 
-        body_mask = torch.logical_xor(mask > 0.5, joint_mask)
-        bg_mask = torch.logical_not(torch.logical_or(body_mask,joint_mask))
+        # body_mask = torch.logical_xor(mask > 0.5, joint_mask)
+        # bg_mask = torch.logical_not(torch.logical_or(body_mask,joint_mask))
         
-        joints_px_num = max(joint_mask.sum(),1)
-        body_px_num = max(body_mask.sum(),1)
-        bg_px_num = max(bg_mask.sum(),1)
+        # joints_px_num = max(joint_mask.sum(),1)
+        # body_px_num = max(body_mask.sum(),1)
+        # bg_px_num = max(bg_mask.sum(),1)
          
         # pos_ind = gt >= 0.1
         # pos_num = max(pos_ind.sum(),1)
@@ -45,10 +45,10 @@ class BalancedRegLoss(nn.Module):
         # neg_num = max(neg_ind.sum(),1)
 
         eu_loss = ((pred - gt)**2) * vis_weight
-        joint_loss = eu_loss[joint_mask].sum()
-        body_loss = eu_loss[body_mask].sum()
-        bg_loss = eu_loss[bg_mask].sum()
-        loss = joint_loss / joints_px_num + body_loss / body_px_num + bg_loss / bg_px_num
+        # joint_loss = eu_loss[joint_mask].sum()
+        body_loss = (eu_loss[mask] * 1.0).mean()
+        bg_loss = eu_loss[torch.logical_not(mask)].mean()
+        loss = body_loss + bg_loss        
         return loss
 
 
