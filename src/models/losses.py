@@ -28,7 +28,7 @@ class BalancedRegLoss(nn.Module):
         pred = torch.flatten(pred, start_dim=2)
         gt = torch.flatten(gt, start_dim=2)
 
-        joint_mask = gt >= 0.1
+        joint_mask = gt >= 0.5
         
         vis_weight = joint_mask.max(2, keepdim=True)[0] * 1.0
 
