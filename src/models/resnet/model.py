@@ -38,7 +38,7 @@ class FCNHead(nn.Module):
             nn.BatchNorm2d(inter_channels),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Conv2d(inter_channels, channels, 3, padding=1))
+            nn.Conv2d(inter_channels, channels, 1))
     
 	def forward(self, x):
 		return self.conv(x) 
@@ -70,14 +70,11 @@ class CustomizedResnet(nn.Module):
 		# 	nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(256),
 		# 	FCNHead(256, 55)
 		# )
-
-        self.downsample = nn.Sequential(nn.Conv2d(2048,2048,1,2, bias=False),nn.BatchNorm2d(2048))
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(2048, 1024, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(1024),
             nn.Conv2d(1024, 512, 3, padding=1, bias=False), nn.ReLU(), nn.BatchNorm2d(512),
-            nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(256),
-			nn.Conv2d(256, 128, 3,padding=1, bias=False), nn.ReLU(), nn.BatchNorm2d(128),
-			nn.ConvTranspose2d(128, 128, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(128),
+			nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(256),
+            nn.Conv2d(256, 128, 3, padding=1, bias=False), nn.ReLU(), nn.BatchNorm2d(128),
 			FCNHead(128, 55)
 		)
 
@@ -89,7 +86,6 @@ class CustomizedResnet(nn.Module):
        """
        with torch.set_grad_enabled(not self.fix_encoder_params):
             x = self.encoder(x)['out']
-       x = self.downsample(x)
        return self.decoder(x)
  
    def deactive_batchnorm(self):
