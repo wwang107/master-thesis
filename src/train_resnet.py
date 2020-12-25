@@ -4,7 +4,7 @@ from config.defualt import get_cfg_defaults
 from data.build import make_dataloader
 from models.resnet.model import CustomizedResnet
 from trainer.model_trainer import train_model
-from models.losses import WeightedRegLoss, BalancedRegLoss, AnchorLoss
+from models.losses import BalancedRegLoss
 from utils.writer.writer import TensorBoardWriter
 from pathlib import Path
 from datetime import datetime
@@ -39,10 +39,11 @@ if __name__ == "__main__":
     data_loaders = {'train': make_dataloader(cfg, is_train=True),
                     'val': make_dataloader(cfg, is_train=False)}
     model = CustomizedResnet()
+    optimizer = torch.optim.Adam(model.parameters())
     print(model)
     loss = BalancedRegLoss()
     print("cuad available: ", torch.cuda.is_available())
-    # model, optimizer, epoch, _ = load_checkpoint(model, optimizer, 'best_124.pth')
+    model, optimizer, epoch, _ = load_checkpoint(model, optimizer, 'runs/2020-12-25-11:46:35/checkpoint_6.pth')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters())
