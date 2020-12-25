@@ -32,11 +32,11 @@ class ResidualBlock(nn.Module):
 class FCNHead(nn.Module):
 	def __init__(self, in_channels, channels):
 		super().__init__()
-		inter_channels = in_channels // 4
+		inter_channels = in_channels // 2
 		self.conv = nn.Sequential(
             nn.Conv2d(in_channels, inter_channels, 3, padding=1, bias=False),
             nn.BatchNorm2d(inter_channels),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Dropout(0.1),
             nn.Conv2d(inter_channels, channels, 1))
     
@@ -71,10 +71,10 @@ class CustomizedResnet(nn.Module):
 		# 	FCNHead(256, 55)
 		# )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(2048, 1024, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(1024),
-            nn.Conv2d(1024, 512, 3, padding=1, bias=False), nn.ReLU(), nn.BatchNorm2d(512),
-			nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(256),
-            nn.Conv2d(256, 128, 3, padding=1, bias=False), nn.ReLU(), nn.BatchNorm2d(128),
+            nn.ConvTranspose2d(2048, 1024, 2, stride=2), nn.ReLU(inplace=True),nn.BatchNorm2d(1024),
+            nn.Conv2d(1024, 512, 3, padding=1, bias=False), nn.ReLU(inplace=True), nn.BatchNorm2d(512),
+			nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(inplace=True),nn.BatchNorm2d(256),
+            nn.Conv2d(256, 128, 3, padding=1, bias=False), nn.ReLU(inplace=True), nn.BatchNorm2d(128),
 			FCNHead(128, 55)
 		)
 
