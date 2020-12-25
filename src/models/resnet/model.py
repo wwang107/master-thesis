@@ -71,10 +71,10 @@ class CustomizedResnet(nn.Module):
 		# 	FCNHead(256, 55)
 		# )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(2048, 1024, 2, stride=2), nn.ReLU(inplace=True),nn.BatchNorm2d(1024),
-            nn.Conv2d(1024, 512, 3, padding=1, bias=False), nn.ReLU(inplace=True), nn.BatchNorm2d(512),
-			nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(inplace=True),nn.BatchNorm2d(256),
-            nn.Conv2d(256, 128, 3, padding=1, bias=False), nn.ReLU(inplace=True), nn.BatchNorm2d(128),
+            nn.ConvTranspose2d(2048, 1024, 4, stride=2), nn.ReLU(inplace=True),nn.BatchNorm2d(1024),
+            nn.Conv2d(1024, 512, 3, bias=False), nn.ReLU(inplace=True), nn.BatchNorm2d(512),
+			nn.ConvTranspose2d(512, 256, 4, stride=2), nn.ReLU(inplace=True),nn.BatchNorm2d(256),
+            nn.Conv2d(256, 128, 3, bias=False), nn.ReLU(inplace=True), nn.BatchNorm2d(128),
 			FCNHead(128, 55)
 		)
 
