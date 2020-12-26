@@ -49,7 +49,7 @@ if __name__ == "__main__":
     model.encoder[0]['layer4'].requires_grad_(True)
     optimizer = torch.optim.Adam([
                 {'params': model.decoder.parameters()},
-                {'params': model.encoder[0]['layer4'].parameters(), 'lr': 0.001}
+                {'params': model.encoder[0]['layer4'].parameters(), 'lr': 0.0001}
             ])
     trained_model, loss = train_model(model, data_loaders, loss, optimizer, device, checkpt_dir=log_dir, writer=tsboard, num_epochs= 200, start_epoch=epoch)
 
