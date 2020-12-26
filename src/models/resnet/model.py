@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+from torchvision.models import resnet
  
 class ResidualBlock(nn.Module):
    def __init__(self, in_channels: int, out_channels: int, kernel_size: int) -> None:
@@ -63,6 +64,8 @@ class CustomizedResnet(nn.Module):
         #     nn.Conv2d(55,55,3,padding=1)
         
         resnet50 = models.segmentation.fcn_resnet50(pretrained=use_pretrained)
+        for param in resnet50.parameters():
+            param.requires_grad = False
         self.encoder = nn.Sequential(*list(resnet50.children())[:-2])
         # self.decoder = nn.Sequential(
         #     nn.ConvTranspose2d(2048, 1024, 2, stride=2), nn.ReLU(),nn.BatchNorm2d(1024),
@@ -84,8 +87,7 @@ class CustomizedResnet(nn.Module):
        --------------------------
        x has a dimension of [N,channel,Height,Width]
        """
-       with torch.set_grad_enabled(not self.fix_encoder_params):
-            x = self.encoder(x)['out']
+       x = self.encoder(x)['out']
        return self.decoder(x)
  
    def deactive_batchnorm(self):

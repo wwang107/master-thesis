@@ -43,10 +43,14 @@ if __name__ == "__main__":
     print(model)
     loss = BalancedRegLoss()
     print("cuad available: ", torch.cuda.is_available())
-    model, optimizer, epoch, _ = load_checkpoint(model, optimizer, 'runs/2020-12-25-11:46:35/checkpoint_6.pth')
+    model, optimizer, epoch, _ = load_checkpoint(model, optimizer, 'runs/2020-12-25-23:13:20/checkpoint_34.pth')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
-    optimizer = torch.optim.Adam(model.parameters())
+    model.encoder[0]['layer4'].requires_grad_(True)
+    optimizer = torch.optim.Adam([
+                {'params': model.decoder.parameters()},
+                {'params': model.encoder[0]['layer4'].parameters(), 'lr': 0.001}
+            ])
     trained_model, loss = train_model(model, data_loaders, loss, optimizer, device, checkpt_dir=log_dir, writer=tsboard, num_epochs= 200, start_epoch=epoch)
 
 
