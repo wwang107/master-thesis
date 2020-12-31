@@ -218,8 +218,7 @@ class AggregateModel(pl.LightningModule):
             loss_key = 'validation_step_avg_loss/temporal_encoder'
             self.log(loss_key, loss, on_epoch=True)
             return loss
-        elif self.camera_view_encoder == None and self.temporal_encoder == None:
-            if self.fusion_net != None:
+        elif self.fusion_net != None:
                 loss_key = 'validation_step_avg_loss/fusion_net'
                 self.log(loss_key, loss, on_epoch=True)
                 return loss
