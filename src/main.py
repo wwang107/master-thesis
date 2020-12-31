@@ -31,7 +31,7 @@ def main(hparams):
     is_train_input_encoder = hparams.input_encoder
 
     resnet = CustomizedResnet(use_pretrained=True)
-    resnet = load_weight(resnet,load_model_state_dict("/home/wei/master-thesis/best_50.pth", device))
+    resnet = load_weight(resnet,load_model_state_dict("pretrain/resnet50/best_68.pth", device))
     
 
 
