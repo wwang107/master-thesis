@@ -447,7 +447,7 @@ def save_batch_heatmaps_multi(batch_image, batch_heatmaps, normalize=True):
                                     .byte()\
                                     .cpu().numpy()
 
-        resized_image = cv2.resize(image,
+        resized_image = cv2.resize(cv2.cvtColor(image, cv2.COLOR_RGB2BGR),
                                    (int(heatmap_width), int(heatmap_height)))
 
         height_begin = heatmap_height * i
