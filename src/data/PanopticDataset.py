@@ -7,6 +7,7 @@ from data import panutils
 from pathlib import Path
 from torch.utils.data import Dataset
 from utils.transform import get_affine_transform, affine_transform, get_scale
+from torchvision.transforms import Normalize
 from tqdm import tqdm
 
 CMU_TO_COCO_JOINT_LABEL = {
@@ -99,7 +100,7 @@ class PanopticDataset(Dataset):
         self.cfg = cfg
         self.is_train = is_train
         self.num_frames_in_subseq = cfg.DATASET.NUM_FRAME_PER_SUBSEQ
-        self.num_view = num_view 
+        self.num_view = num_view
         self.num_max_people = cfg.DATASET.MAX_NUM_PEOPLE
         self.keypoint_generator = keypoint_generator
         self.heatmap_generator = heatmap_generator
@@ -108,6 +109,7 @@ class PanopticDataset(Dataset):
         self.num_row_per_joints = 3
         self.num_directional_keypoint = 55
         self.use_cameras = TRAINING_CAMERA_ID if is_train else VALIDATION_CAMERA_ID
+        self.normalize = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
         self.files = {}
         self.files["sub_seq_data"] = []
@@ -216,7 +218,7 @@ class PanopticDataset(Dataset):
                 self.num_view,
                 self.num_frames_in_subseq,
             ),
-            np.uint8,
+            np.float32,
         )
         pose2d = np.zeros(
             (
@@ -280,20 +282,25 @@ class PanopticDataset(Dataset):
                     keypoint2d[0:num_person[f], :, :, k, f]
                 )
                 a = cv2.imread(str(subseq_hdImg[cam_id][f]))
+                a = cv2.cvtColor(a, cv2.COLOR_BGR2RGB)
+                a = a/255
+                a = torch.from_numpy(a)
+                a = self.normalize(a.permute(2,0,1))
+                a = a.permute(1,2,0).numpy()
                 try:
                     if a.shape[0] < 0 or a.shape[1] < 0:
                         print(str(subseq_hdImg[cam_id][f]))
                 except AttributeError:
                     print(str(subseq_hdImg[cam_id][f]))
-                img[:, :, :, k, f] = cv2.warpAffine(
-                    cv2.imread(str(subseq_hdImg[cam_id][f])),
+                
+                img[:, :, :, k, f] = cv2.warpAffine(a,
                     trans,
                     (self.cfg.DATASET.INPUT_SIZE, self.cfg.DATASET.INPUT_SIZE),
                     flags=cv2.INTER_LINEAR,
                 )
                 hm[:, :, :, k, f] = heatmap
         
-        keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
+        # keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
         img = img.transpose(2, 0, 1, 3, 4)
         return {
             "heatmap": torch.from_numpy(hm),

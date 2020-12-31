@@ -43,7 +43,7 @@ if __name__ == "__main__":
     print(model)
     loss = BalancedRegLoss()
     print("cuad available: ", torch.cuda.is_available())
-    model, optimizer, epoch, _ = load_checkpoint(model, optimizer, 'runs/2020-12-25-23:13:20/checkpoint_34.pth')
+    model, optimizer, epoch, _ = load_checkpoint(model, optimizer, 'checkpoint_34.pth')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model.encoder[0]['layer4'].requires_grad_(True)

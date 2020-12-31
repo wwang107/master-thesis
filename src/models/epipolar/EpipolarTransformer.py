@@ -60,9 +60,9 @@ class Epipolar(nn.Module):
         assert feat1.size(2) == feat2.size(2)
         assert feat1.size(3) == feat2.size(3)
         N,C,H,W = feat1.size()
-        
+        threshold = nn.Threshold(0.5, 0.0)
         ref_view = feat1
-        src_view = feat2.expand(self.sample_size, N, C, H, W)       
+        src_view = threshold(feat2.expand(self.sample_size, N, C, H, W))       
          
         sample_locs = self.grid2sample_locs(self.grid, P1, P2, H, W)
         sample_locs = sample_locs.to(src_view)
@@ -83,14 +83,18 @@ class Epipolar(nn.Module):
                 fig = plt.figure(figsize=(12, 8))
                 ax1 = fig.add_subplot(211)
                 ax2 = fig.add_subplot(212)
-                img1_resized = cv2.resize(cv2.cvtColor(img1[i].cpu().permute(1,2,0).numpy(), cv2.COLOR_BGR2RGB),(64,64))
-                img2_resized = cv2.resize(cv2.cvtColor(img2[i].cpu().permute(1,2,0).numpy(), cv2.COLOR_BGR2RGB),(64,64))
-                ax1.imshow(img1_resized/255)
-                ax2.imshow(img2_resized/255)
-                ax1.set_ylim([64, 0])
-                ax1.set_xlim([0, 64])
-                ax2.set_ylim([64, 0])
-                ax2.set_xlim([0, 64])
+                min = float(img1[i].min())
+                max = float(img1[i].max())
+                im1 = img1[i].add(-min).div(max - min + 1e-5)
+                im2 = img2[i].add(-min).div(max - min + 1e-5)
+                img1_resized = cv2.resize(im1.cpu().permute(1,2,0).numpy(),(128,128))
+                img2_resized = cv2.resize(im2.cpu().permute(1,2,0).numpy(),(128,128))
+                ax1.imshow(img1_resized)
+                ax2.imshow(img2_resized)
+                ax1.set_ylim([128, 0])
+                ax1.set_xlim([0, 128])
+                ax2.set_ylim([128, 0])
+                ax2.set_xlim([0, 128])
                 for j in range(0,17):
                     cx, cy = int(coord2pix(keypt1[i,2,j,0], 1)), int(coord2pix(keypt1[i,2,j,1], 1))
                     xy = corr_pos[i][cy,cx].cpu().numpy()
@@ -113,7 +117,7 @@ class Epipolar(nn.Module):
         out = torch.stack(batch)
         return out
     
-    def epipolar_similarity(self, feat1, sampled_feat2, epipolar_similarity = 'dot', epipolar_attension = 'avg'):
+    def epipolar_similarity(self, feat1, sampled_feat2, epipolar_similarity = 'cos', epipolar_attension = 'avg'):
         """ 
         Args:
             fea1: C, H, W
