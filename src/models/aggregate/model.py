@@ -52,7 +52,9 @@ class AggregateModel(pl.LightningModule):
     def get_input_heatmaps(self, x):
         num_view = x.size(4)
         num_frame = x.size(5)
-        # self.input_heatmap_encoder.train()
+        if self.train_input_heatmap_encoder and self.training:
+            self.input_heatmap_encoder.eval()
+
         input_heatmaps = torch.zeros((x.size(
             0), self.in_channels, *self.heatmap_size, num_view, num_frame)).to(self.device)
         
