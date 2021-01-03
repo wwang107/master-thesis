@@ -151,8 +151,8 @@ class AggregateModel(pl.LightningModule):
         if out['temporal_encoder'] == None and out['camera_view_encoder'] == None:
             if out['fusion_net'] != None:
                 fused_heatmap = out['fusion_net']
-                weight = (batch_gt_heatmaps[:, :, :, :, 0:1, :] > 0.1) * \
-                1.0 + (batch_gt_heatmaps[:, :, :, :,0:1, :] <= 0.1) * 0.1
+                weight = (batch_gt_heatmaps[:, :, :, :, 0:1, :] >= 0.5) * \
+                10 + (batch_gt_heatmaps[:, :, :, :,0:1, :] < 0.5) * 1.0
                 t_loss = self.loss(
                     fused_heatmap, batch_gt_heatmaps[:, :, :, :, 0:1, :], weight)
                 return t_loss
