@@ -50,19 +50,23 @@ class AggregateModel(pl.LightningModule):
                 'fp': 0, 'tp': 0, 'tn': 0}
 
     def get_input_heatmaps(self, x):
-        num_view = x.size(4)
-        num_frame = x.size(5)
-        if self.train_input_heatmap_encoder and self.training:
-            self.input_heatmap_encoder.eval()
-
-        input_heatmaps = torch.zeros((x.size(
-            0), self.in_channels, *self.heatmap_size, num_view, num_frame)).to(self.device)
-        
-        for k in range(num_view):
-            for f in range(num_frame):
-                input_heatmaps[:, :, :, :, k, f] = self.input_heatmap_encoder(
-                    x[:, :, :, :, k, f])
-        return input_heatmaps
+        N, C, H, W, V, F = x.size()
+        self.input_heatmap_encoder.eval()
+        with torch.no_grad():
+            input_batch = torch.zeros((N*V*F, C, H, W)).to(x)
+            for i in range(N):
+                for v in range(V):
+                    for f in range(F):
+                        input_batch[i*V*F + v + f] = x[i,:,:,:,v,f]
+            
+            input_heatmaps = self.input_heatmap_encoder(input_batch)
+            out_C, out_H, out_W = input_heatmaps.size(1), input_heatmaps.size(2), input_heatmaps.size(3) 
+            output_batch = torch.zeros((N, out_C, out_H, out_W, V, F)).to(x)
+            for i in range(N):
+                for v in range(V):
+                    for f in range(F):
+                        output_batch[i,:,:,:,v,f] = input_heatmaps[i*V*F + v + f]
+        return output_batch
     
     def get_epipolar_heatmap(self,feats, proj_mats, imgs = None, keypoints = None):
         num_view = feats.size(4) 
