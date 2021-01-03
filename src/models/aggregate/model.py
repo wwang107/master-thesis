@@ -57,7 +57,7 @@ class AggregateModel(pl.LightningModule):
             for i in range(N):
                 for v in range(V):
                     for f in range(F):
-                        input_batch[i*V*F + v + f] = x[i,:,:,:,v,f]
+                        input_batch[i*V*F + v*F + f] = x[i,:,:,:,v,f]
             
             input_heatmaps = self.input_heatmap_encoder(input_batch)
             out_C, out_H, out_W = input_heatmaps.size(1), input_heatmaps.size(2), input_heatmaps.size(3) 
@@ -65,7 +65,7 @@ class AggregateModel(pl.LightningModule):
             for i in range(N):
                 for v in range(V):
                     for f in range(F):
-                        output_batch[i,:,:,:,v,f] = input_heatmaps[i*V*F + v + f]
+                        output_batch[i,:,:,:,v,f] = input_heatmaps[i*V*F + v*F + f]
         return output_batch
     
     def get_epipolar_heatmap(self,feats, proj_mats, imgs = None, keypoints = None):

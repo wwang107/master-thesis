@@ -32,8 +32,6 @@ def main(hparams):
 
     resnet = CustomizedResnet(use_pretrained=True)
     resnet = load_weight(resnet,load_model_state_dict("pretrain/resnet50/best_68.pth", device))
-    
-
 
     fuse_model = FusionNet(2*in_channels, out_channels, num_feature, input_frame=1)
     model = AggregateModel(resnet, Epipolar(debug=False), None, fuse_model, None,
@@ -46,7 +44,7 @@ def main(hparams):
     trainer = pl.Trainer(gpus=hparams.gpus,
                          max_epochs= 20,
                          limit_val_batches=0.5,
-                        #  limit_test_batches=3,
+                         resume_from_checkpoint='lightning_logs/version_35/checkpoints/epoch=3.ckpt',
                          callbacks=[LogModelHeatmaps(log_dir=hparams.images_dir, num_frame=cfg.DATASET.NUM_FRAME_PER_SUBSEQ),
                                     ModelCheckpoint(monitor='validation_step_avg_loss/fusion_net', save_top_k=3)])
     trainer.fit(model, train_dataloader=data_loader['train'], val_dataloaders=data_loader['valid'])
