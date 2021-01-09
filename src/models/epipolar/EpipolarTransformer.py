@@ -3,9 +3,11 @@ import cv2
 from torch import nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from torch.serialization import save
 
 from core import cfg
-from utils.multiview import normalize, findFundamentalMat, de_normalize, coord2pix  
+from utils.multiview import normalize, findFundamentalMat, de_normalize, coord2pix 
+from utils.vis.vis import save_batch_maps
 
 visualize_prob = 0.1
 
@@ -80,33 +82,42 @@ class Epipolar(nn.Module):
                     corr_pos.append(pos)
             if self.debug:
                 import matplotlib.pyplot as plt
-                fig = plt.figure(figsize=(12, 8))
-                ax1 = fig.add_subplot(211)
-                ax2 = fig.add_subplot(212)
-                min = float(img1[i].min())
-                max = float(img1[i].max())
-                im1 = img1[i].add(-min).div(max - min + 1e-5)
-                im2 = img2[i].add(-min).div(max - min + 1e-5)
-                img1_resized = cv2.resize(im1.cpu().permute(1,2,0).numpy(),(128,128))
-                img2_resized = cv2.resize(im2.cpu().permute(1,2,0).numpy(),(128,128))
-                ax1.imshow(img1_resized)
-                ax2.imshow(img2_resized)
-                ax1.set_ylim([128, 0])
-                ax1.set_xlim([0, 128])
-                ax2.set_ylim([128, 0])
-                ax2.set_xlim([0, 128])
-                for j in range(0,17):
+                import numpy as np
+                fig = plt.figure(figsize=(60, 60))
+                ax1 = fig.add_subplot(121)
+                ax2 = fig.add_subplot(122)
+                # min = float(img1[i].min())
+                # max = float(img1[i].max())
+                # im1 = img1[i].add(-min).div(max - min + 1e-5)
+                # im2 = img2[i].add(-min).div(max - min + 1e-5)
+                im1 = np.flip(save_batch_maps(img1[i:i+1], feat1[i:i+1,0:1]), 2)
+                im2 = np.flip(save_batch_maps(img2[i:i+1], feat2[i:i+1,0:1]), 2)
+                # img1_resized = cv2.resize(im1.cpu().permute(1,2,0).numpy(),(128,128))
+                # img2_resized = cv2.resize(im2.cpu().permute(1,2,0).numpy(),(128,128))
+                ax1.imshow(im1)
+                ax2.imshow(im2)
+                ax1.set_ylim([256, 0])
+                ax1.set_xlim([0, 256])
+                ax2.set_ylim([256, 0])
+                ax2.set_xlim([0, 256])
+                for j in range(0,1):
                     cx, cy = int(coord2pix(keypt1[i,2,j,0], 1)), int(coord2pix(keypt1[i,2,j,1], 1))
                     xy = corr_pos[i][cy,cx].cpu().numpy()
 
                     line_start1 = de_normalize(sample_locs[1,i][int(cy)][int(cx)], H, W)
                     line_start2 = de_normalize(sample_locs[127,i][int(cy)][int(cx)], H, W)
                     
+                    
                     ax1.scatter(cx,cy,color='yellow')
-                    ax2.plot([line_start1[0], line_start2[0]], [line_start1[1], line_start2[1]], alpha=0.5, color='b', zorder=1)
+                    # 
+                    ax2.plot([line_start1[0], line_start2[0]], [line_start1[1], line_start2[1]], alpha=0.5, color='b')
+                    sample_pts = de_normalize(sample_locs[:,i, int(cy), int(cx),:], H,W).clone().cpu().numpy()
+                    ax2.scatter(sample_pts[::8,0], sample_pts[::8,1], color='b')
                     dx, dy = int(coord2pix(keypt2[i,2,j,0], 1)), int(coord2pix(keypt2[i,2,j,1], 1))
                     ax2.scatter(dx,dy, color='yellow')
                     ax2.scatter(xy[0],xy[1],color='red')
+                ax1.axis('off')
+                ax2.axis('off')
                 plt.show()
 
             idx = idx.view(1, 1, H, W).expand(-1, C, -1, -1)
@@ -115,6 +126,7 @@ class Epipolar(nn.Module):
             # tmp = (src_sampled * sim.view(-1, 1, H, W)).sum(0)
             batch.append(tmp)
         out = torch.stack(batch)
+        
         return out
     
     def epipolar_similarity(self, feat1, sampled_feat2, epipolar_similarity = 'cos', epipolar_attension = 'avg'):
