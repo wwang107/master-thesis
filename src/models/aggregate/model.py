@@ -83,7 +83,8 @@ class AggregateModel(pl.LightningModule):
                                     keypoints[..., 0] if keypoints != None else None,
                                     keypoints[..., j] if keypoints != None else None)
             fuse_sum += fuse
-        
+        # a = save_batch_maps(imgs[0:1,...,0], fuse_sum[0:1,0:1])
+        # cv2.imwrite('test.png', a)
         fuse_sum = fuse_sum.view(*fuse_sum.size(),1)
         return fuse_sum.view(*fuse_sum.size(),1)
 
@@ -114,7 +115,7 @@ class AggregateModel(pl.LightningModule):
         input_heatmaps = self.get_input_heatmaps(x)
         if not is_train_input_heatmap_encoder:
             input_heatmaps = input_heatmaps.detach()
-
+        
         if self.epipolar_transformer != None and self.fusion_net != None:
             fused_heatmaps = torch.zeros(input_heatmaps.size()).to(x.device)
             for f in range(self.num_frame):
