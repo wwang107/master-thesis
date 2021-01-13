@@ -83,8 +83,8 @@ class AggregateModel(pl.LightningModule):
                                     keypoints[..., 0] if keypoints != None else None,
                                     keypoints[..., j] if keypoints != None else None)
             fuse_sum += fuse
-        a = save_batch_maps(imgs[0:1,...,0], fuse_sum[0:1,0:1])
-        cv2.imwrite('test.png', a)
+        # a = save_batch_maps(imgs[0:1,...,0], fuse_sum[0:1,0:1])
+        # cv2.imwrite('test.png', a)
         fuse_sum = fuse_sum.view(*fuse_sum.size(),1)
         return fuse_sum.view(*fuse_sum.size(),1)
 
