@@ -301,7 +301,7 @@ class PanopticDataset(Dataset):
                 )
                 hm[:, :, :, k, f] = heatmap
         
-        # keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
+        keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
         img = img.transpose(2, 0, 1, 3, 4)
         return {
             "heatmap": torch.from_numpy(hm),
