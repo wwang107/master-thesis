@@ -22,10 +22,10 @@ class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, image, mask, joints):
+    def __call__(self, image, mask, joints, bboxes = None):
         for t in self.transforms:
-            image, mask, joints = t(image, mask, joints)
-        return image, mask, joints
+            image, mask, joints, bboxes = t(image, mask, joints, bboxes)
+        return image, mask, joints, bboxes
 
     def __repr__(self):
         format_string = self.__class__.__name__ + "("
@@ -37,8 +37,8 @@ class Compose(object):
 
 
 class ToTensor(object):
-    def __call__(self, image, mask, joints):
-        return F.to_tensor(image), mask, joints
+    def __call__(self, image, mask, joints, bboxes = None):
+        return F.to_tensor(image), mask, joints, bboxes
 
 
 class Normalize(object):
@@ -56,16 +56,22 @@ class Resize(object):
         self.input_size = input_size
         self.output_size = output_size
 
-    def __call__(self, image, mask, joints):
+    def __call__(self, image, mask, joints, bboxes = None):
         h, w = image.shape[:2]
         scale_height, scale_width = self.output_size[1]/h, self.output_size[0]/w
+        if bboxes is not None:
+            bboxes[:,0] = bboxes[:,0] * scale_width
+            bboxes[:,1] = bboxes[:,1] * scale_height
+            bboxes[:,2] = bboxes[:,2] * scale_width
+            bboxes[:,3] = bboxes[:,3] * scale_height
+            
 
         image = cv2.resize(image,(self.input_size, self.input_size))
         mask = cv2.resize(mask, (self.output_size[0], self.output_size[1]))
         joints[:, :, 0] = joints[:, :, 0] * scale_width
         joints[:, :, 1] = joints[:, :, 1] * scale_height
 
-        return image, mask, joints
+        return image, mask, joints, bboxes
 
 
 class RandomHorizontalFlip(object):
