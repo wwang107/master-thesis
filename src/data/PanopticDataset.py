@@ -375,13 +375,10 @@ class PanopticDataset(Dataset):
                         y_br = np.amax(keypoint2d[p,vis,1,v,t])
                         width = x_br - x_ul
                         height = y_br - y_ul
-                        diaganal = (width * width + height * height)
-                        if diaganal == 0:
-                            diaganal = 10
-                        else:
-                            diaganal = np.sqrt(diaganal)
-                        width = width + 0.1*diaganal
-                        height = height + 0.1*diaganal
+                        if width == 0:
+                            width = 2
+                        if height == 0:
+                            height = 2
                         bboxes[p,0,v,t] = x_ul
                         bboxes[p,1,v,t] = y_ul
                         bboxes[p,2,v,t] = width
