@@ -39,15 +39,16 @@ class CocoKeypoints(CocoDataset):
         anno = [obj for obj in anno if obj["iscrowd"] == 0 or obj["num_keypoints"] > 0]
 
         joints = self.get_joints(anno)
-
+        bboxes = self.get_bboxes(anno)
         if self.transforms:
-            img, mask, joints = self.transforms(img, mask, joints)
+            img, mask, joints, bboxes= self.transforms(img, mask, joints, bboxes)
         dir_keypoints = self.direction_keypoints_generator(joints, 0.1)
         heatmap = self.heatmap_generator(
             np.concatenate((joints, dir_keypoints), axis=1)
         )
 
         return {
+            "bboxes": bboxes,
             "images": img,
             "masks": mask,
             "heatmaps": heatmap,
@@ -75,6 +76,14 @@ class CocoKeypoints(CocoDataset):
 
         return m > 0.5
 
+    def get_bboxes(self, anno):
+        num_people = len(anno)
+        bboxes = np.zeros((num_people, 4))
+
+        for i, obj in enumerate(anno):
+            bboxes[i] = np.array(obj['bbox'])
+        return bboxes
+
     def get_joints(self, anno):
         num_people = len(anno)
 
@@ -86,3 +95,10 @@ class CocoKeypoints(CocoDataset):
             )
 
         return joints
+    
+    def evaluate_with_gt_bbox(self, cfg, hms):
+        channels, height, width = hms[0].size()
+        for idx, hm in enumerate(hms):
+            img, anno = super().__getitem__(idx)
+        
+        return 

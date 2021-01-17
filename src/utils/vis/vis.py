@@ -33,14 +33,14 @@ def add_joints(image, joints, dataset='COCO'):
                     (int(jointa[0]), int(jointa[1])),
                     (int(jointb[0]), int(jointb[1])),
                     color,
-                    2
+                    1
                 )
 
     # add joints
     for i, joint in enumerate(joints):
         if joint[2] > 0:
             cv2.circle(image, (int(joint[0]), int(
-                joint[1])), 1, idx_color[i], 2)
+                joint[1])), 1, idx_color[i], 1)
             # cv2.putText(image, str(i), (int(joint[0]), int(
             #     joint[1])), cv2.FONT_HERSHEY_SIMPLEX, fontScale=.5, color=(0, 0, 255))
 

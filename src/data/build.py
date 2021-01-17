@@ -87,7 +87,7 @@ def make_dataloader(cfg, dataset_name='coco', is_train=True, replicate_view=Fals
     if dataset_name == 'coco':
         dataset = build_dataset(cfg, is_train)
         data_loader = torch.utils.data.DataLoader(
-            dataset, num_workers=8, batch_size=32, shuffle = True if is_train else False, collate_fn=collate_fn)
+            dataset, num_workers=1, batch_size=3, shuffle = True if is_train else False, collate_fn=collate_fn)
     else:
         dataset = build_CMU_dataset(cfg, is_train, replicate_view)
         is_shuffle = True if is_train else False
@@ -108,7 +108,7 @@ def collate_fn(batch):
         batch: is a list of dictionary with (image, heatmap, joints, directional_keypoints)
     """
     collated_batch = {'images': [], 'heatmaps': [], 'masks': [],
-                      'joints': [], 'directional_keypoints': []}
+                      'joints': [], 'directional_keypoints': [], 'bboxes': []}
 
     for sample in batch:
         for key in sample:
