@@ -78,9 +78,9 @@ BODY_EDGES = (
     - 1
 )
 
-TRAIN_LIST = ["160226_haggling1"]
+TRAIN_LIST = ["170407_haggling_a1", "160226_haggling1", "161202_haggling1"]
 
-VAL_LIST = ["160226_haggling1"]
+VAL_LIST = ["160906_pizza1"]
 
 
 class PanopticDataset(Dataset):
@@ -301,14 +301,16 @@ class PanopticDataset(Dataset):
                 )
                 hm[:, :, :, k, f] = heatmap
         
-        keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
+        bboxes = self.create_bboxes(keypoint2d, num_person)
+        # keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
         img = img.transpose(2, 0, 1, 3, 4)
         return {
             "heatmap": torch.from_numpy(hm),
             "img": torch.from_numpy(img),
             "keypoint2d": torch.from_numpy(keypoint2d),
             "num_person": num_person,
-            "KRT": torch.from_numpy(krt)
+            "KRT": torch.from_numpy(krt),
+            "bboxes":torch.from_numpy(bboxes)
         }
 
     def readSkeletonFromPath(self, path):
@@ -356,6 +358,44 @@ class PanopticDataset(Dataset):
 
         out = K_homo@R_homo
         return out
+
+    def create_bboxes(self, keypoint2d, num_person):
+        num_frame = keypoint2d.shape[4]
+        num_view = keypoint2d.shape[3]
+        
+        bboxes = np.zeros((self.num_max_people,5,num_view, num_frame))
+        for t in range(num_frame):
+            for v in range(num_view):
+                for p in range(num_person[t]):
+                    vis = keypoint2d[p,:,2,v,t] > 0
+                    if np.sum(vis) > 0:
+                        x_ul = np.amin(keypoint2d[p,vis,0,v,t])
+                        y_ul = np.amin(keypoint2d[p,vis,1,v,t])
+                        x_br = np.amax(keypoint2d[p,vis,0,v,t])
+                        y_br = np.amax(keypoint2d[p,vis,1,v,t])
+                        width = x_br - x_ul
+                        height = y_br - y_ul
+                        diaganal = (width * width + height * height)
+                        if diaganal == 0:
+                            diaganal = 10
+                        else:
+                            diaganal = np.sqrt(diaganal)
+                        width = width + 0.1*diaganal
+                        height = height + 0.1*diaganal
+                        bboxes[p,0,v,t] = x_ul
+                        bboxes[p,1,v,t] = y_ul
+                        bboxes[p,2,v,t] = width
+                        bboxes[p,3,v,t] = height
+                        bboxes[p,4,v,t] = 1.0
+                    else:
+                        continue
+        
+        return bboxes
+                # p = num_person[t]
+                # keypoints = 
+
+
+
 class ReplicateViewPanoptic(PanopticDataset):
     def __init__(self, cfg, num_view, heatmap_generator=None, keypoint_generator=None, is_train=True) -> None:
         super().__init__(cfg, 1, heatmap_generator, keypoint_generator, is_train)
