@@ -230,6 +230,15 @@ class PanopticDataset(Dataset):
             ),
             np.float32,
         )
+        keypoint3d = np.zeros(
+            (
+                self.num_max_people,
+                3,
+                self.num_joints,
+                self.num_frames_in_subseq,
+            ),
+            np.float32,
+        )
         keypoint2d = np.zeros(
             (
                 self.num_max_people,
@@ -264,6 +273,7 @@ class PanopticDataset(Dataset):
                                                    trans_output)
                 for p, pose3d in enumerate(frame3d):
                     pose3d = self.mapKeypointsToCOCO(pose3d)
+                    keypoint3d[p,:,:,f] = pose3d[0:3,:]
                     pose2d[p, :, :, k, f] = self.map3DkeypointsTo2d(
                         pose3d, self.files[seq_name]["cams_matrix"][cam_id])
                     keypoint2d[p, 0:17, :, k, f] =  pose2d[p, :, 0:17, k, f].transpose()
@@ -305,6 +315,7 @@ class PanopticDataset(Dataset):
         # keypoint2d[:,:,[0,1],:,:] = keypoint2d[:,:,[1,0],:,:] # swap xyv to yxv
         img = img.transpose(2, 0, 1, 3, 4)
         return {
+            "keypoint3d": torch.from_numpy(keypoint3d),
             "heatmap": torch.from_numpy(hm),
             "img": torch.from_numpy(img),
             "keypoint2d": torch.from_numpy(keypoint2d),
