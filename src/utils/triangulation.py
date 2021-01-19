@@ -1081,7 +1081,7 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
 def calculate_pckh3d(gt_poses, est_poses):
     tp = np.zeros(17)
     for i, gt_pose in enumerate(gt_poses):
-        head_segment_length = np.linalg.norm(gt_pose[:,1] - gt_pose[:,2])
+        head_segment_length = np.linalg.norm(gt_pose[:,3] - gt_pose[:,4])*0.5
         diff = est_poses[i] - gt_pose
         diff = np.linalg.norm(diff, axis=0)
         tp += diff <= head_segment_length 
