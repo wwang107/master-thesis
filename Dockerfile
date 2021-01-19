@@ -8,3 +8,4 @@ RUN conda install -c conda-forge pycocotools
 RUN conda install -c conda-forge gdown
 RUN conda install -c anaconda scipy
 RUN conda install -c anaconda scikit-image
+RUN conda install -c numba numba
