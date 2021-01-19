@@ -739,12 +739,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.u_arm_left is None
-            best_pose.u_arm_left = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.u_arm_left is None
+                best_pose.u_arm_left = limb
+            else:
+                pose = Pose()
+                pose.u_arm_left = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.u_arm_left = limb
@@ -765,11 +770,16 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            best_pose.shoulder = shoulder
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                best_pose.shoulder = shoulder
+            else:
+                pose = Pose()
+                pose.shoulder = shoulder
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.shoulder = shoulder
@@ -789,12 +799,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.u_arm_right is None
-            best_pose.u_arm_right = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.u_arm_right is None
+                best_pose.u_arm_right = limb
+            else:
+                pose = Pose()
+                pose.u_arm_right = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.u_arm_right = limb
@@ -813,12 +828,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.l_arm_right is None
-            best_pose.l_arm_right = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.l_arm_right is None
+                best_pose.l_arm_right = limb
+            else:
+                pose = Pose()
+                pose.l_arm_right = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.l_arm_right = limb
@@ -839,12 +859,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.l_side is None
-            best_pose.l_side = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.l_side is None
+                best_pose.l_side = limb
+            else:
+                pose = Pose()
+                pose.l_side = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.l_side = limb
@@ -865,12 +890,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.r_side is None
-            best_pose.r_side = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.r_side is None
+                best_pose.r_side = limb
+            else:
+                pose = Pose()
+                pose.r_side = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.r_side = limb
@@ -904,12 +934,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
                 d_left = la.norm(pt1_left - pt2_left) * scale2mm
                 d = (d_left+d_right)/2
                 distances.append(d * 0.7)
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.hip is None
-            best_pose.hip = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.hip is None
+                best_pose.hip = limb
+            else:
+                pose = Pose()
+                pose.hip = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.hip = limb
@@ -930,12 +965,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.u_leg_left is None
-            best_pose.u_leg_left = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.u_leg_left is None
+                best_pose.u_leg_left = limb
+            else:
+                pose = Pose()
+                pose.u_leg_left = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.u_leg_left = limb
@@ -954,12 +994,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.l_leg_left is None
-            best_pose.l_leg_left = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.l_leg_left is None
+                best_pose.l_leg_left = limb
+            else:
+                pose = Pose()
+                pose.l_leg_left = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.l_leg_left = limb
@@ -979,12 +1024,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.u_leg_right is None
-            best_pose.u_leg_right = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.u_leg_right is None
+                best_pose.u_leg_right = limb
+            else:
+                pose = Pose()
+                pose.u_leg_right = limb
+                new_Poses.append(pose) 
         else:
             pose = Pose()
             pose.u_leg_right = limb
@@ -1003,12 +1053,17 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
             d = la.norm(pt1 - pt2) * scale2mm
             distances.append(d)
         
-        best = np.argmin(distances)
-        best_val = distances[best]
-        if merge_distance_mm > best_val:
-            best_pose = Poses[best]
-            # assert best_pose.l_leg_right is None
-            best_pose.l_leg_right = limb
+        best = np.argmin(distances) if len(distances) > 0 else None
+        if best != None:
+            best_val = distances[best]
+            if merge_distance_mm > best_val:
+                best_pose = Poses[best]
+                # assert best_pose.l_leg_right is None
+                best_pose.l_leg_right = limb
+            else:
+                pose = Pose()
+                pose.l_leg_right = limb
+                new_Poses.append(pose)
         else:
             pose = Pose()
             pose.l_leg_right = limb
