@@ -145,7 +145,7 @@ def main(hparams):
             hm = []
             cameras = []
             for i in range(V):
-                hm.append(fusion_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
+                hm.append(input_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
                 cameras.append(batch_krt[0, ..., i].cpu())
             
             Points3d = []
@@ -173,7 +173,7 @@ def main(hparams):
                 tot_person += num_person
             
             print(tp[used_joint]/tot_person.cpu().numpy())
-            np.savetxt('test_results/fusion.txt',tp[used_joint]/tot_person.cpu().numpy())
+            np.savetxt('test_results/input.txt',tp[used_joint]/tot_person.cpu().numpy())
 
         print('end')
         pckh = tp/tot_person.cpu().numpy()
