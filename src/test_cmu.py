@@ -145,7 +145,7 @@ def main(hparams):
             hm = []
             cameras = []
             for i in range(V):
-                hm.append(input_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
+                hm.append(temoral_hms[0,..., i].cpu().numpy().transpose(1, 2, 0))
                 cameras.append(batch_krt[0, ..., i].cpu())
             
             Points3d = []
@@ -173,8 +173,34 @@ def main(hparams):
                 tot_person += num_person
             
             print(tp[used_joint]/tot_person.cpu().numpy())
-            np.savetxt('test_results/input.txt',tp[used_joint]/tot_person.cpu().numpy())
+            np.savetxt('test_results/temporal.txt',tp[used_joint]/tot_person.cpu().numpy())
 
+            # imgs = batch_imgs[0,..., F//2]
+            # imgs = imgs.clone().cpu().float()
+            # min = float(imgs.min())
+            # max = float(imgs.max())
+            # imgs.add_(-min).div_(max - min + 1e-5)
+
+            # fig = plt.figure(figsize=(12, 12))
+            # Axs = []
+            # for i in range(5):
+            #     ax = fig.add_subplot(2, 3, i+1)
+            #     ax.set_xlim([0, 255/2]); ax.set_ylim([255/2, 0])
+            #     Axs.append(ax)
+
+            # Axs[0].imshow(cv2.resize(imgs[...,0].permute(1, 2, 0).numpy(), dsize=None, fx=1/2, fy=1/2))
+            # Axs[1].imshow(cv2.resize(imgs[...,1].permute(1, 2, 0).numpy(), dsize=None, fx=1/2, fy=1/2))
+            # Axs[2].imshow(cv2.resize(imgs[...,2].permute(1, 2, 0).numpy(), dsize=None, fx=1/2, fy=1/2))
+            # Axs[3].imshow(cv2.resize(imgs[...,3].permute(1, 2, 0).numpy(), dsize=None, fx=1/2, fy=1/2))
+            # Axs[4].imshow(cv2.resize(imgs[...,4].permute(1, 2, 0).numpy(), dsize=None, fx=1/2, fy=1/2))
+            
+            # cmap = get_cmap(len(poses))
+            # for ax, cam in zip(Axs, cameras):
+            #     for i, pose in enumerate(poses):
+            #         if pose.count_limbs() > 5:
+            #             pose.plot(ax, cam, cmap(i))
+
+            # plt.show()
         print('end')
         pckh = tp/tot_person.cpu().numpy()
 
