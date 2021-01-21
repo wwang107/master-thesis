@@ -20,8 +20,8 @@ def triangulate_viewpair(hm1, hm2, cam1, cam2, epi_distance=1.0, ax1=None, ax2=N
     """ triangulate view pair to 3d
     :param epi_distance: maximum distance in pixel
     """
-    peaks1 = peak_local_max(hm1, threshold_abs=0.3)
-    peaks2 = peak_local_max(hm2, threshold_abs=0.3)
+    peaks1 = peak_local_max(hm1, threshold_abs=0.2)
+    peaks2 = peak_local_max(hm2, threshold_abs=0.2)
     
     values1 = hm1[peaks1[:, 0], peaks1[:, 1]]
     values2 = hm2[peaks2[:, 0], peaks2[:, 1]]
@@ -1073,7 +1073,7 @@ def extract_poses(Points3d, scale2mm, merge_distance_mm=60):
     final_poses = []
     # discard poses has less than 5 limbs
     for pose in Poses:
-        if pose.count_limbs() > 5:
+        if pose.count_limbs() > 2:
             final_poses.append(pose)
 
     return final_poses
