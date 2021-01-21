@@ -139,13 +139,13 @@ def main(hparams):
             
             input_hms = out['input_heatmap_encoder']
             fusion_hms = out['fusion_net']
-            temoral_hms = out['temporal_encoder']
+            temporal_hms = out['temporal_encoder']
 
             # Prepare the input of 3d pose estimation
             hm = []
             cameras = []
             for i in range(V):
-                hm.append(fusion_hms[0,..., i].cpu().numpy().transpose(1, 2, 0))
+                hm.append(temporal_hms[0,..., i].cpu().numpy().transpose(1, 2, 0))
                 cameras.append(batch_krt[0, ..., i].cpu())
             
             Points3d = []
