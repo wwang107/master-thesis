@@ -145,7 +145,7 @@ def main(hparams):
             hm = []
             cameras = []
             for i in range(V):
-                hm.append(input_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
+                hm.append(fusion_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
                 cameras.append(batch_krt[0, ..., i].cpu())
             
             Points3d = []
