@@ -173,7 +173,7 @@ def main(hparams):
                 tot_person += num_person
             
             print(tp[used_joint]/tot_person.cpu().numpy())
-            np.savetxt('test_results/input-3-view.txt',tp[used_joint]/tot_person.cpu().numpy())
+            np.savetxt('test_results/fusion-3-view.txt',tp[used_joint]/tot_person.cpu().numpy())
 
             # imgs = batch_imgs[0,..., F//2]
             # imgs = imgs.clone().cpu().float()
