@@ -7,7 +7,7 @@ from utils.vis.vis import save_batch_maps
 from pathlib import Path
 import cv2
 
-def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, writer=None, num_epochs=20, start_epoch = 0):
+def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, writer=None, num_epochs=20, start_epoch = 0, data_set='coco'):
     since = time.time()
 
     model = model.to(device)
@@ -26,11 +26,14 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
             running_loss = 0.0
             # Iterate over data.
             for i, data in enumerate(dataloaders[phase]):
-                images, joints, keypoints, heatmaps, masks = data['images'], data[
-                    'joints'], data['directional_keypoints'], data['heatmaps'], data['masks']
-                images = images.to(device)
-                heatmaps = heatmaps.to(device)
-                masks = masks.to(device)
+                if data_set == 'coco':
+                    images, joints, keypoints, heatmaps, masks = data['images'], data[
+                        'joints'], data['directional_keypoints'], data['heatmaps'], data['masks']
+                    images = images.to(device)
+                    heatmaps = heatmaps.to(device)
+                    masks = masks.to(device)
+                else: # cmu
+                    images, heatmaps= data['img'][...,0,0].to(device), data['heatmap'][...,0,0].to(device)
                 # zero the parameter gradients
                 optimizer.zero_grad()
                 
@@ -38,7 +41,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, checkpt_dir, w
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(images.float())
-                    loss = criterion(outputs, heatmaps, masks)
+                    loss = criterion(outputs, heatmaps)
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()

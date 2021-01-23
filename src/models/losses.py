@@ -20,11 +20,11 @@ class BalancedRegLoss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, pred, gt, mask):
+    def forward(self, pred, gt, mask = None):
         assert pred.size() == gt.size()
-        mask = mask[:, None, :, :].expand_as(pred)
 
-        mask = torch.flatten(mask, start_dim=2)
+        if mask != None:
+            mask = torch.flatten(mask, start_dim=2)
         pred = torch.flatten(pred, start_dim=2)
         gt = torch.flatten(gt, start_dim=2)
 
