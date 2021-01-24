@@ -208,7 +208,7 @@ def main(hparams):
                     tp, gt = get_true_positive(batch_keypoint[...,i,j], input_prediction, batch_num_person[:,j])
                     pckh['resnet50']['tp'] += tp
                     pckh['resnet50']['gt'] += gt
-
+            print(torch.true_divide(pckh['resnet50']['tp'], pckh['resnet50']['gt']))
             # for i in range(V):
             #     for j in range(F):
             #         fusion_prediction = calculate_prediction(fusion_hms[...,i,j], batch_bboxes[...,i,j])
