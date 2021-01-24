@@ -137,7 +137,7 @@ def main(hparams):
             out = model(batch_imgs, batch_krt)
             B,C,H,W,V,F = out['input_heatmap_encoder'].size()
             
-            input_hms = out['input_heatmap_encoder']
+            input_hms = out['input_heatmap_encoder'][:,0:17]
             fusion_hms = out['fusion_net']
             temporal_hms = out['temporal_encoder']
 
