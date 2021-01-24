@@ -86,7 +86,7 @@ def main(hparams):
     is_train_input_encoder = hparams.input_encoder
 
     resnet = CustomizedResnet(use_pretrained=True)
-    resnet = load_weight(resnet,load_model_state_dict("pretrain/resnet50/best_68.pth", device))
+    resnet = load_weight(resnet,load_model_state_dict("pretrain/resnet50/train_on_cmu/best_18.pth", device))
     # print(resnet)
 
     fuse_model = FusionNet(2*in_channels, out_channels, num_feature, input_frame=1)
@@ -145,7 +145,7 @@ def main(hparams):
             hm = []
             cameras = []
             for i in range(V):
-                hm.append(temporal_hms[0,..., i].cpu().numpy().transpose(1, 2, 0))
+                hm.append(input_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
                 cameras.append(batch_krt[0, ..., i].cpu())
             
             Points3d = []
@@ -173,7 +173,7 @@ def main(hparams):
                 tot_person += num_person
             
             print(tp[used_joint]/tot_person.cpu().numpy())
-            np.savetxt('test_results/temporal-3-view.txt',tp[used_joint]/tot_person.cpu().numpy())
+            np.savetxt('test_results/input-cmu-5-view.txt',tp[used_joint]/tot_person.cpu().numpy())
 
             # imgs = batch_imgs[0,..., F//2]
             # imgs = imgs.clone().cpu().float()
