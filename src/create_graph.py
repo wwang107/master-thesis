@@ -30,9 +30,9 @@ def main(hparams):
     is_train_input_encoder = hparams.input_encoder
 
     # Baseline
-    # baseline = CustomizedResnet(use_pretrained=True)
-    # baseline = load_weight(baseline,load_model_state_dict("pretrain/resnet50/train_on_cmu/best_18.pth", device))
-    # baseline = baseline.to(device)
+    baseline = CustomizedResnet(use_pretrained=True)
+    baseline = load_weight(baseline,load_model_state_dict("pretrain/resnet50/train_on_cmu/best_18.pth", device))
+    baseline = baseline.to(device)
 
     # Full-framework
     resnet = CustomizedResnet(use_pretrained=True)
@@ -83,8 +83,8 @@ def main(hparams):
             temporal_hms = out['temporal_encoder'][0].cpu().numpy().transpose(1, 2, 0,3)
             
             baseline_hms = torch.zeros((1,55,128,128,5)).to(device)
-            # for v in range(5):
-            #     baseline_heatmap[..., v] = baseline(batch_imgs[...,v,9//2])
+            for v in range(5):
+                baseline_hms[..., v] = baseline(batch_imgs[...,v,9//2])
             baseline_hms = baseline_hms[0].cpu().numpy().transpose(1, 2, 0,3)
             # 2D graph
             
