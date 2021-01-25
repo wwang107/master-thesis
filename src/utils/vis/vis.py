@@ -9,6 +9,25 @@ from . import VIS_CONFIG
 import math
 
 
+def add_joint_matplot(image,joints, ax, person_color, dataset='COCO'):
+    part_idx = VIS_CONFIG[dataset]['part_idx']
+    part_orders = VIS_CONFIG[dataset]['part_orders']
+    idx_color = VIS_CONFIG[dataset]['idx_color']
+
+    def link(a, b, color):
+        if part_idx[a] < joints.shape[0] and part_idx[b] < joints.shape[0]:
+            jointa = joints[part_idx[a]]
+            jointb = joints[part_idx[b]]
+            if jointa[2] > 0 and jointb[2] > 0:
+                ax.plot([jointa[0], jointb[0]], [jointa[1], jointb[1]], c=color)
+
+    for i, joint in enumerate(joints):
+        if joint[2] > 0:
+            ax.scatter(joint[0], joint[1], s=20, color='white')
+
+    for pair in part_orders:
+        link(pair[0], pair[1], person_color)
+
 def add_joints(image, joints, dataset='COCO'):
     """Draw joint on the given image
 

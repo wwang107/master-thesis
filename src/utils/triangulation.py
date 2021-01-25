@@ -16,12 +16,12 @@ import cv2
 def line_to_point_distance(a,b,c,x,y):
     return abs(a*x + b*y + c) / sqrt(a**2 + b**2)
 
-def triangulate_viewpair(hm1, hm2, cam1, cam2, epi_distance=1.0, ax1=None, ax2=None):
+def triangulate_viewpair(hm1, hm2, cam1, cam2, threshold, epi_distance=1.0, ax1=None, ax2=None):
     """ triangulate view pair to 3d
     :param epi_distance: maximum distance in pixel
     """
-    peaks1 = peak_local_max(hm1, threshold_abs=0.5)
-    peaks2 = peak_local_max(hm2, threshold_abs=0.5)
+    peaks1 = peak_local_max(hm1, threshold_abs=threshold)
+    peaks2 = peak_local_max(hm2, threshold_abs=threshold)
     
     values1 = hm1[peaks1[:, 0], peaks1[:, 1]]
     values2 = hm2[peaks2[:, 0], peaks2[:, 1]]
@@ -107,7 +107,7 @@ def triangulate_viewpair(hm1, hm2, cam1, cam2, epi_distance=1.0, ax1=None, ax2=N
     return points3d, values
 
 
-def generate_3d_cloud(HMs, Cameras, Axs=None):
+def generate_3d_cloud(HMs, Cameras, threshold = 0.5,Axs=None):
     assert len(HMs) == len(Cameras)
     n_cams = len(Cameras)
     points3d = []
@@ -115,8 +115,7 @@ def generate_3d_cloud(HMs, Cameras, Axs=None):
     for a in range(n_cams-1):
         for b in range(a+1, n_cams):
             pts3d, val = triangulate_viewpair(
-                HMs[a], HMs[b], Cameras[a], Cameras[b]
-            )
+                HMs[a], HMs[b], Cameras[a], Cameras[b], threshold=threshold)
             if len(pts3d) > 0:
                 points3d.append(pts3d)
                 values.append(val)
