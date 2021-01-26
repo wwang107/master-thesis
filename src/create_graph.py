@@ -22,6 +22,34 @@ def load_weight(model, state_dict):
     model.load_state_dict(state_dict)
     return model
 
+def calculate_prediction(hms, bboxes, imgs = None, method='max'):
+    import math
+    
+    if imgs is not None:
+        imgs = imgs.cpu().clone().float()
+        min = float(imgs.min())
+        max = float(imgs.max())
+        imgs.add_(-min).div_(max - min + 1e-5)
+
+    batch_num, max_person = bboxes.size(0), bboxes.size(1)
+    batch_predictions = torch.zeros((batch_num, max_person, 17,3)).to(bboxes)
+    for i,hm in enumerate(hms):
+        for k,bbox in enumerate(bboxes[i]):
+            pred_joint = torch.zeros(17,3).to(hm)
+            if bbox[4]<1:
+                continue
+            x_ul, y_ul, w, h = int(bbox[0]), int(bbox[1]), math.ceil(bbox[2]), math.ceil(bbox[3])
+            roi = hm[:,y_ul:y_ul+h, x_ul:x_ul+w]
+            if method == 'max':
+                roi_reshape = torch.reshape(roi,(-1, w*h))
+                maxval, maxidx = torch.max(roi_reshape, dim=1)
+                x_loc = maxidx % w
+                y_loc = maxidx // w
+                batch_predictions[i,k,:,0] = x_ul + x_loc
+                batch_predictions[i,k,:,1] = y_ul + y_loc 
+                batch_predictions[i,k,:,2] = 1 
+    return batch_predictions
+
 def main(hparams):
     cfg = get_cfg_defaults()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -78,86 +106,22 @@ def main(hparams):
 
             out = model(batch_imgs, batch_krt)
             B,C,H,W,V,F = out['input_heatmap_encoder'].size()
-            input_hms = out['input_heatmap_encoder'][0].cpu().numpy().transpose(1, 2, 0,3,4)
-            fusion_hms = out['fusion_net'][0].cpu().numpy().transpose(1, 2, 0,3,4)
-            temporal_hms = out['temporal_encoder'][0].cpu().numpy().transpose(1, 2, 0,3)
+            # input_hms = out['input_heatmap_encoder'][0].cpu().numpy().transpose(1, 2, 0,3,4)
+            # fusion_hms = out['fusion_net'][0].cpu().numpy().transpose(1, 2, 0,3,4)
+            # temporal_hms = out['temporal_encoder'][0].cpu().numpy().transpose(1, 2, 0,3)
+            input_hms = out['input_heatmap_encoder']
+            fusion_hms = out['fusion_net']
+            temporal_hms = out['temporal_encoder']
             
+            # baseline_hms = torch.zeros((1,55,128,128,5)).to(device)
+            # for v in range(5):
+            #     baseline_hms[..., v] = baseline(batch_imgs[...,v,9//2])
+            # baseline_hms = baseline_hms[0].cpu().numpy().transpose(1, 2, 0,3)
             baseline_hms = torch.zeros((1,55,128,128,5)).to(device)
             for v in range(5):
                 baseline_hms[..., v] = baseline(batch_imgs[...,v,9//2])
-            baseline_hms = baseline_hms[0].cpu().numpy().transpose(1, 2, 0,3)
+            # baseline_hms = baseline_hms
             # 2D graph
-            
-            
-
-            # 3D graph
-            cameras = []
-            Point3d_baseline_heatmap = []
-            Point3d_input_heatmap = []
-            Point3d_fusion_heatmap = []
-            Point3d_temporal_heatmap = []
-
-            for i in range(V):
-                cameras.append(batch_krt[0, ..., i].cpu())
-
-            # BASELINE_HEATMAP
-            for jid in tqdm(range(55)):
-                HMs_baseline_heatmap = []
-                for v in range(V):
-                    HMs_baseline_heatmap.append(baseline_hms[:,:,jid,v])
-
-                points3d, values = generate_3d_cloud(HMs_baseline_heatmap, cameras, Axs=None)
-                if isinstance(points3d, list):
-                    Point3d_baseline_heatmap.append([])
-                    continue
-                points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
-                Point3d_baseline_heatmap.append((points3d, values))
-
-
-            # INPUT_HEATMAP
-            for jid in tqdm(range(55)):
-                HMs_input_heatmap = []
-                for v in range(V):
-                    HMs_input_heatmap.append(input_hms[:,:,jid,v,F//2])
-
-                points3d, values = generate_3d_cloud(HMs_input_heatmap, cameras, Axs=None)
-                if isinstance(points3d, list):
-                    Point3d_input_heatmap.append([])
-                    continue
-                points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
-                Point3d_input_heatmap.append((points3d, values))
-            
-            # FUSINO_HEATMAP
-            for jid in tqdm(range(55)):
-                HMs_fusion_heatmap = []
-                for v in range(V):
-                    HMs_fusion_heatmap.append(fusion_hms[:,:,jid,v,F//2])
-
-                points3d, values = generate_3d_cloud(HMs_fusion_heatmap, cameras, threshold=0.3,Axs=None)
-                if isinstance(points3d, list):
-                    Point3d_fusion_heatmap.append([])
-                    continue
-                points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
-                Point3d_fusion_heatmap.append((points3d, values))
-
-            # TEMPORAL HEATMAP
-            for jid in tqdm(range(55)):
-                HMs_temoral_heatmap = []
-                for v in range(V):
-                    HMs_temoral_heatmap.append(temporal_hms[:,:,jid,v])
-
-                points3d, values = generate_3d_cloud(HMs_temoral_heatmap, cameras, threshold=0.25, Axs=None)
-                if isinstance(points3d, list):
-                    Point3d_temporal_heatmap.append([])
-                    continue
-                points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
-                Point3d_temporal_heatmap.append((points3d, values))
-
-            poses_baseline = extract_poses(Point3d_baseline_heatmap, scale2mm=parameters['scale_to_mm'])
-            poses_input = extract_poses(Point3d_input_heatmap, scale2mm=parameters['scale_to_mm'])
-            poses_fusion_heatmap = extract_poses(Point3d_fusion_heatmap, scale2mm=parameters['scale_to_mm'])
-            poses_temporal_heatmap = extract_poses(Point3d_temporal_heatmap, scale2mm=parameters['scale_to_mm'])
-
             imgs = batch_imgs[0,..., F//2]
             imgs = imgs.clone().cpu().float()
             min = float(imgs.min())
@@ -198,41 +162,194 @@ def main(hparams):
                     
                     Axs[r*5+c].imshow(cv2.resize(imgs[...,c].permute(1, 2, 0).numpy(), dsize=None, fx=1/2, fy=1/2))
             
-            batch_keypoint = batch_keypoint[0,...,F//2].cpu().numpy()
-            n = batch_num_person[0,...,F//2].cpu().numpy()
+            n = batch_num_person[0, F//2]
+            pre_joints_baseline = []
+            pre_joints_input = []
+            pre_joints_fusion = []
+            pre_joints_temporal = []
+            for v in range(V):
+                pre_joint_baseline = calculate_prediction(baseline_hms[:,0:17,...,v],batch_bboxes[:,0:n,...,v,F//2])[0]
+                pre_joint_input = calculate_prediction(input_hms[:,0:17,...,v, F//2],batch_bboxes[:,0:n,...,v,F//2])[0]
+                pre_joint_fusion = calculate_prediction(fusion_hms[:,0:17,...,v, F//2], batch_bboxes[:,0:n,...,v,F//2])[0]
+                pre_joint_temporal = calculate_prediction(temporal_hms[:,0:17,...,v], batch_bboxes[:,0:n,...,v,F//2])[0]
+                pre_joints_baseline.append(pre_joint_baseline)
+                pre_joints_input.append(pre_joint_input)
+                pre_joints_fusion.append(pre_joint_fusion)
+                pre_joints_temporal.append(pre_joint_temporal)
+            
             cmap = get_cmap(10)
-            for c, ax in enumerate(Axs[0*5+0:0*5+5]):
-                img = cv2.resize(imgs[...,c].permute(1, 2, 0)\
-                                            .cpu().numpy(), dsize=None, fx=1/2, fy=1/2)
-                ax.imshow(img)
-                for i,joints in enumerate(batch_keypoint[0:n]):
-                    img = add_joint_matplot(img, joints[0:17,...,c],ax, cmap(i))
+            for i,ax in enumerate(Axs[0*5+0:0*5+5]):
+                for i, joints in enumerate(batch_keypoint[0,0:n,0:17,:,i,F//2].cpu().numpy()):
+                    add_joint_matplot(joints,ax, cmap(i))
+
+            for i,ax in enumerate(Axs[1*5+0:1*5+5]):
+                for i, joints in enumerate(pre_joints_baseline[i]):
+                    joints = joints.cpu().numpy()
+                    add_joint_matplot(joints,ax, cmap(i))
+
+            for i,ax in enumerate(Axs[2*5+0:2*5+5]):
+                for i, joints in enumerate(pre_joints_input[i]):
+                    joints = joints.cpu().numpy()
+                    add_joint_matplot(joints,ax, cmap(i))
+            
+            for i,ax in enumerate(Axs[3*5+0:3*5+5]):
+                for i, joints in enumerate(pre_joints_fusion[i]):
+                    joints = joints.cpu().numpy()
+                    add_joint_matplot(joints,ax, cmap(i))
+            
+            for i,ax in enumerate(Axs[4*5+0:4*5+5]):
+                for i, joints in enumerate(pre_joints_temporal[i]):
+                    joints = joints.cpu().numpy()
+                    add_joint_matplot(joints,ax, cmap(i))
+            
+            fig.savefig('test_results/2D-{}.png'.format(plot_num))
                 
-            cmap = get_cmap(len(poses_baseline))
-            for ax, cam in zip(Axs[1*5+0:1*5+5], cameras):
-                for i, pose in enumerate(poses_baseline):
-                    if pose.count_limbs() > 5:
-                        pose.plot(ax, cam, cmap(i))
             
-            cmap = get_cmap(len(poses_input))
-            for ax, cam in zip(Axs[2*5+0:2*5+5], cameras):
-                for i, pose in enumerate(poses_input):
-                    if pose.count_limbs() > 5:
-                        pose.plot(ax, cam, cmap(i))
+            # ----------------------------------------------------------------------------------------------------------
+            # 3D graph
+            # ----------------------------------------------------------------------------------------------------------
+            # cameras = []
+            # Point3d_baseline_heatmap = []
+            # Point3d_input_heatmap = []
+            # Point3d_fusion_heatmap = []
+            # Point3d_temporal_heatmap = []
+
+            # for i in range(V):
+            #     cameras.append(batch_krt[0, ..., i].cpu())
+
+            # # BASELINE_HEATMAP
+            # for jid in tqdm(range(55)):
+            #     HMs_baseline_heatmap = []
+            #     for v in range(V):
+            #         HMs_baseline_heatmap.append(baseline_hms[:,:,jid,v])
+
+            #     points3d, values = generate_3d_cloud(HMs_baseline_heatmap, cameras, Axs=None)
+            #     if isinstance(points3d, list):
+            #         Point3d_baseline_heatmap.append([])
+            #         continue
+            #     points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
+            #     Point3d_baseline_heatmap.append((points3d, values))
+
+
+            # # INPUT_HEATMAP
+            # for jid in tqdm(range(55)):
+            #     HMs_input_heatmap = []
+            #     for v in range(V):
+            #         HMs_input_heatmap.append(input_hms[:,:,jid,v,F//2])
+
+            #     points3d, values = generate_3d_cloud(HMs_input_heatmap, cameras, Axs=None)
+            #     if isinstance(points3d, list):
+            #         Point3d_input_heatmap.append([])
+            #         continue
+            #     points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
+            #     Point3d_input_heatmap.append((points3d, values))
             
-            cmap = get_cmap(len(poses_fusion_heatmap))
-            for ax, cam in zip(Axs[3*5+0:3*5+5], cameras):
-                for i, pose in enumerate(poses_fusion_heatmap):
-                    if pose.count_limbs() > 5:
-                        pose.plot(ax, cam, cmap(i))
+            # # FUSINO_HEATMAP
+            # for jid in tqdm(range(55)):
+            #     HMs_fusion_heatmap = []
+            #     for v in range(V):
+            #         HMs_fusion_heatmap.append(fusion_hms[:,:,jid,v,F//2])
+
+            #     points3d, values = generate_3d_cloud(HMs_fusion_heatmap, cameras, threshold=0.3,Axs=None)
+            #     if isinstance(points3d, list):
+            #         Point3d_fusion_heatmap.append([])
+            #         continue
+            #     points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
+            #     Point3d_fusion_heatmap.append((points3d, values))
+
+            # # TEMPORAL HEATMAP
+            # for jid in tqdm(range(55)):
+            #     HMs_temoral_heatmap = []
+            #     for v in range(V):
+            #         HMs_temoral_heatmap.append(temporal_hms[:,:,jid,v])
+
+            #     points3d, values = generate_3d_cloud(HMs_temoral_heatmap, cameras, threshold=0.25, Axs=None)
+            #     if isinstance(points3d, list):
+            #         Point3d_temporal_heatmap.append([])
+            #         continue
+            #     points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
+            #     Point3d_temporal_heatmap.append((points3d, values))
+
+            # poses_baseline = extract_poses(Point3d_baseline_heatmap, scale2mm=parameters['scale_to_mm'])
+            # poses_input = extract_poses(Point3d_input_heatmap, scale2mm=parameters['scale_to_mm'])
+            # poses_fusion_heatmap = extract_poses(Point3d_fusion_heatmap, scale2mm=parameters['scale_to_mm'])
+            # poses_temporal_heatmap = extract_poses(Point3d_temporal_heatmap, scale2mm=parameters['scale_to_mm'])
+
+            # imgs = batch_imgs[0,..., F//2]
+            # imgs = imgs.clone().cpu().float()
+            # min = float(imgs.min())
+            # max = float(imgs.max())
+            # imgs.add_(-min).div_(max - min + 1e-5)
+
+            # fig = plt.figure(figsize=(60, 60))
+            # Axs = []
+            # for r in range(5): # gt # baseline # input # fusion # temporal 
+            #     for c in range(5):
+            #         ax = fig.add_subplot(5, 5, r*5+c+1)
+            #         ax.set_yticks([])
+            #         ax.set_xticks([])
+            #         ax.set_xlim([0, 255/2]); ax.set_ylim([255/2, 0])
+            #         Axs.append(ax)
+            #         if r == 0:
+            #             if c==0:
+            #                 ax.set_title('View 0', {'fontsize': 40},color='k')
+            #             if c==1:
+            #                 ax.set_title('View 1', {'fontsize': 40},color='k')
+            #             if c==2:
+            #                 ax.set_title('View 2', {'fontsize': 40},color='k')
+            #             if c==3:
+            #                 ax.set_title('View 3', {'fontsize': 40},color='k')
+            #             if c==4:
+            #                 ax.set_title('View 4', {'fontsize': 40},color='k')
+            #         if c==0:
+            #             if r==0:
+            #                 ax.set_ylabel('Ground truth', {'fontsize': 40})
+            #             if r==1:
+            #                 ax.set_ylabel('Baseline', {'fontsize': 40})
+            #             if r==2:
+            #                 ax.set_ylabel('2D backbone', {'fontsize': 40})
+            #             if r==3:
+            #                 ax.set_ylabel('View fusion', {'fontsize': 40})
+            #             if r==4:
+            #                 ax.set_ylabel('Temporal fusion', {'fontsize': 40})
+                    
+            #         Axs[r*5+c].imshow(cv2.resize(imgs[...,c].permute(1, 2, 0).numpy(), dsize=None, fx=1/2, fy=1/2))
             
-            cmap = get_cmap(len(poses_temporal_heatmap))
-            for ax, cam in zip(Axs[4*5+0:4*5+5], cameras):
-                for i, pose in enumerate(poses_temporal_heatmap):
-                    if pose.count_limbs() > 5:
-                        pose.plot(ax, cam, cmap(i))
-            plt.show()
-            fig.savefig('test_results/3D-{}.png'.format(plot_num))
+            # batch_keypoint = batch_keypoint[0,...,F//2].cpu().numpy()
+            # n = batch_num_person[0,...,F//2].cpu().numpy()
+            # cmap = get_cmap(10)
+            # for c, ax in enumerate(Axs[0*5+0:0*5+5]):
+            #     img = cv2.resize(imgs[...,c].permute(1, 2, 0)\
+            #                                 .cpu().numpy(), dsize=None, fx=1/2, fy=1/2)
+            #     ax.imshow(img)
+            #     for i,joints in enumerate(batch_keypoint[0:n]):
+            #         img = add_joint_matplot(img, joints[0:17,...,c],ax, cmap(i))
+                
+            # cmap = get_cmap(len(poses_baseline))
+            # for ax, cam in zip(Axs[1*5+0:1*5+5], cameras):
+            #     for i, pose in enumerate(poses_baseline):
+            #         if pose.count_limbs() > 5:
+            #             pose.plot(ax, cam, cmap(i))
+            
+            # cmap = get_cmap(len(poses_input))
+            # for ax, cam in zip(Axs[2*5+0:2*5+5], cameras):
+            #     for i, pose in enumerate(poses_input):
+            #         if pose.count_limbs() > 5:
+            #             pose.plot(ax, cam, cmap(i))
+            
+            # cmap = get_cmap(len(poses_fusion_heatmap))
+            # for ax, cam in zip(Axs[3*5+0:3*5+5], cameras):
+            #     for i, pose in enumerate(poses_fusion_heatmap):
+            #         if pose.count_limbs() > 5:
+            #             pose.plot(ax, cam, cmap(i))
+            
+            # cmap = get_cmap(len(poses_temporal_heatmap))
+            # for ax, cam in zip(Axs[4*5+0:4*5+5], cameras):
+            #     for i, pose in enumerate(poses_temporal_heatmap):
+            #         if pose.count_limbs() > 5:
+            #             pose.plot(ax, cam, cmap(i))
+            # plt.show()
+            # fig.savefig('test_results/3D-{}.png'.format(plot_num))
             plot_num += 1
 
 if __name__ == "__main__":
