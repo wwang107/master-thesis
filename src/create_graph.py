@@ -58,9 +58,9 @@ def main(hparams):
     is_train_input_encoder = hparams.input_encoder
 
     # Baseline
-    baseline = CustomizedResnet(use_pretrained=True)
-    baseline = load_weight(baseline,load_model_state_dict("pretrain/resnet50/train_on_cmu/best_18.pth", device))
-    baseline = baseline.to(device)
+    # baseline = CustomizedResnet(use_pretrained=True)
+    # baseline = load_weight(baseline,load_model_state_dict("pretrain/resnet50/train_on_cmu/best_18.pth", device))
+    # baseline = baseline.to(device)
 
     # Full-framework
     resnet = CustomizedResnet(use_pretrained=True)
@@ -177,7 +177,7 @@ def main(hparams):
                 pre_joints_fusion.append(pre_joint_fusion)
                 pre_joints_temporal.append(pre_joint_temporal)
             
-            cmap = get_cmap(10)
+            cmap = get_cmap(n)
             for i,ax in enumerate(Axs[0*5+0:0*5+5]):
                 for i, joints in enumerate(batch_keypoint[0,0:n,0:17,:,i,F//2].cpu().numpy()):
                     add_joint_matplot(joints,ax, cmap(i))
