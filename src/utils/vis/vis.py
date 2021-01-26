@@ -9,7 +9,7 @@ from . import VIS_CONFIG
 import math
 
 
-def add_joint_matplot(image,joints, ax, person_color, dataset='COCO'):
+def add_joint_matplot(joints, ax, person_color, dataset='COCO'):
     part_idx = VIS_CONFIG[dataset]['part_idx']
     part_orders = VIS_CONFIG[dataset]['part_orders']
     idx_color = VIS_CONFIG[dataset]['idx_color']
