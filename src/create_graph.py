@@ -58,9 +58,9 @@ def main(hparams):
     is_train_input_encoder = hparams.input_encoder
 
     # Baseline
-    # baseline = CustomizedResnet(use_pretrained=True)
-    # baseline = load_weight(baseline,load_model_state_dict("pretrain/resnet50/train_on_cmu/best_18.pth", device))
-    # baseline = baseline.to(device)
+    baseline = CustomizedResnet(use_pretrained=True)
+    baseline = load_weight(baseline,load_model_state_dict("pretrain/resnet50/train_on_cmu/best_18.pth", device))
+    baseline = baseline.to(device)
 
     # Full-framework
     resnet = CustomizedResnet(use_pretrained=True)
