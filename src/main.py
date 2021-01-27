@@ -37,7 +37,7 @@ def main(hparams):
     fuse_model = FusionNet(2*in_channels, out_channels, num_feature, input_frame=1)
     model = AggregateModel(resnet, Epipolar(debug=False), None, fuse_model, None,
                            weighted_mse_loss, in_channels, out_channels, 
-                           train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
+                           train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ, resnet_like=True)
     data_loader = {
         # 'train': make_dataloader(cfg, dataset_name='cmu', is_train=True, replicate_view=replicate_view),
         'valid': make_dataloader(cfg, dataset_name='cmu', is_train=False, replicate_view=replicate_view)

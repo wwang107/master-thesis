@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 import numpy as np
 import cv2
 import matplotlib.pylab as plt
+from torchvision.models import resnet
 from models.epipolar.EpipolarTransformer import Epipolar
 from utils.multiview import findFundamentalMat
 from utils.utils import find_keypoints_from_heatmaps, match_detected_groundtruth_keypoint, pad_heatmap_with_replicate_frame
@@ -24,7 +25,8 @@ class AggregateModel(pl.LightningModule):
                  heatmap_size=(128, 128),
                  num_camera_can_see=5,
                  num_frame_can_see=15,
-                 train_input_heatmap_encoder: bool = False):
+                 train_input_heatmap_encoder: bool = False,
+                 resnet_like:bool=False):
         super().__init__()
         self.heatmap_size = heatmap_size
         self.num_view = num_camera_can_see
@@ -38,6 +40,7 @@ class AggregateModel(pl.LightningModule):
         self.fusion_net = fusion_encoder
         self.temporal_encoder = temporal_encoder
         self.loss = loss
+        self.resnet_like = resnet_like
 
         self.confusion_table = {}
         self.confusion_table['input_heatmap_encoder'] = {
@@ -128,8 +131,10 @@ class AggregateModel(pl.LightningModule):
                 # a = save_batch_maps(x[...,0,0], epipolar_heatmaps[...,0,0])
                 # cv2.imwrite('test.png',a)
             results['epipolar_transoformer'] = epipolar_heatmaps
-            results['fusion_net'] = fused_heatmaps
-            
+            if self.resnet_like:
+                results['fusion_net'] = fused_heatmaps + input_heatmaps
+            else:
+                results['fusion_net'] = fused_heatmaps
         results['input_heatmap_encoder'] = input_heatmaps
         if self.temporal_encoder:
             if self.fusion_net != None:
