@@ -172,7 +172,7 @@ def main(hparams):
                 tot_person += num_person
             
             print(tp[used_joint]/tot_person.cpu().numpy())
-            np.savetxt('test_results/input-cmu-5-view.txt',tp[used_joint]/tot_person.cpu().numpy())
+            np.savetxt('test_results/fusion-cmu-5-view-late-fusion.txt',tp[used_joint]/tot_person.cpu().numpy())
 
             # imgs = batch_imgs[0,..., F//2]
             # imgs = imgs.clone().cpu().float()
