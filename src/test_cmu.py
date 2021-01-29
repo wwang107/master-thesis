@@ -41,7 +41,6 @@ def calculate_prediction(hms, bboxes, imgs = None, method='max'):
 
     batch_num, max_person = bboxes.size(0), bboxes.size(1)
     batch_predictions = torch.zeros((batch_num, max_person, 17,3)).to(bboxes)
-    nms = torch.nn.Threshold(0.0, 0)
     for i,hm in enumerate(hms):
         for k,bbox in enumerate(bboxes[i]):
             pred_joint = torch.zeros(17,3).to(hm)
@@ -49,7 +48,7 @@ def calculate_prediction(hms, bboxes, imgs = None, method='max'):
                 continue
             x_ul, y_ul, w, h = int(bbox[0]), int(bbox[1]), math.ceil(bbox[2]), math.ceil(bbox[3])
             roi = hm[:,y_ul:y_ul+h, x_ul:x_ul+w]
-            if method != 'avg':
+            if method == 'max':
                 roi_reshape = torch.reshape(roi,(-1, w*h))
                 maxval, maxidx = torch.max(roi_reshape, dim=1)
                 x_loc = maxidx % w
@@ -93,7 +92,7 @@ def main(hparams):
     model = AggregateModel(resnet, Epipolar(debug=False), None, fuse_model, None,
                            weighted_mse_loss, in_channels, out_channels, 
                            train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
-    fusion_state_dict = torch.load('pretrain/fusion-model/with-resnet50/epoch=19.ckpt')
+    fusion_state_dict = torch.load('pretrain/fusion-model/with-resnet50/pretrain/late-fusion/epoch=2.ckpt')
     model.load_state_dict(fusion_state_dict['state_dict'])
     temporal_model = TemporalUnet(in_channels, out_channels, num_feature,9)
     print(temporal_model)
@@ -137,43 +136,43 @@ def main(hparams):
             out = model(batch_imgs, batch_krt)
             B,C,H,W,V,F = out['input_heatmap_encoder'].size()
             
-            input_hms = out['input_heatmap_encoder'][:,0:17]
+            input_hms = out['input_heatmap_encoder']
             fusion_hms = out['fusion_net']
             temporal_hms = out['temporal_encoder']
 
-            # # Prepare the input of 3d pose estimation
-            # hm = []
-            # cameras = []
-            # for i in range(V):
-            #     hm.append(input_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
-            #     cameras.append(batch_krt[0, ..., i].cpu())
+            # Prepare the input of 3d pose estimation
+            hm = []
+            cameras = []
+            for i in range(V):
+                hm.append(fusion_hms[0,..., i, F//2].cpu().numpy().transpose(1, 2, 0))
+                cameras.append(batch_krt[0, ..., i].cpu())
             
-            # Points3d = []
-            # for jid in tqdm(range(55)):
-            #     HMs = []
-            #     for h in hm:
-            #         HMs.append(h[:,:,jid])
-            #     # HMs = [hm[0][:,:,jid], hm[1][:,:,jid], hm[2][:,:,jid], hm[3][:,:,jid]]
-            #     points3d, values = generate_3d_cloud(HMs, cameras, Axs=None)
-            #     if isinstance(points3d, list):
-            #         Points3d.append([])
-            #         continue
-            #     points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
-            #     Points3d.append((points3d, values))
+            Points3d = []
+            for jid in tqdm(range(55)):
+                HMs = []
+                for h in hm:
+                    HMs.append(h[:,:,jid])
+                # HMs = [hm[0][:,:,jid], hm[1][:,:,jid], hm[2][:,:,jid], hm[3][:,:,jid]]
+                points3d, values = generate_3d_cloud(HMs, cameras, Axs=None)
+                if isinstance(points3d, list):
+                    Points3d.append([])
+                    continue
+                points3d, values = cluster_3d_cloud(points3d, values, Cameras=cameras, Axs=None)
+                Points3d.append((points3d, values))
 
-            # num_person = batch_num_person[0,F//2]
-            # if num_person == 0:
-            #     continue
-            # else:
-            #     gt_poses = batch_keypoint3d[0,0:num_person,:,:,F//2].cpu().numpy()
-            #     poses = extract_poses(Points3d, scale2mm=parameters['scale_to_mm'])
-            #     if len(poses)>0:
-            #         gt_joints, est_joints = find_nearest_pose(gt_poses, poses)
-            #         tp += calculate_pckh3d(gt_joints, est_joints[:,0:3])
-            #     tot_person += num_person
+            num_person = batch_num_person[0,F//2]
+            if num_person == 0:
+                continue
+            else:
+                gt_poses = batch_keypoint3d[0,0:num_person,:,:,F//2].cpu().numpy()
+                poses = extract_poses(Points3d, scale2mm=parameters['scale_to_mm'])
+                if len(poses)>0:
+                    gt_joints, est_joints = find_nearest_pose(gt_poses, poses)
+                    tp += calculate_pckh3d(gt_joints, est_joints[:,0:3])
+                tot_person += num_person
             
-            # print(tp[used_joint]/tot_person.cpu().numpy())
-            # np.savetxt('test_results/input-cmu-5-view.txt',tp[used_joint]/tot_person.cpu().numpy())
+            print(tp[used_joint]/tot_person.cpu().numpy())
+            np.savetxt('test_results/input-cmu-5-view.txt',tp[used_joint]/tot_person.cpu().numpy())
 
             # imgs = batch_imgs[0,..., F//2]
             # imgs = imgs.clone().cpu().float()
@@ -202,13 +201,13 @@ def main(hparams):
 
             # plt.show()
 
-            for i in range(V):
-                for j in range(F):
-                    input_prediction = calculate_prediction(input_hms[...,i,j], batch_bboxes[...,i,j])
-                    tp, gt = get_true_positive(batch_keypoint[...,i,j], input_prediction, batch_num_person[:,j])
-                    pckh['resnet50']['tp'] += tp
-                    pckh['resnet50']['gt'] += gt
-            print(torch.true_divide(pckh['resnet50']['tp'], pckh['resnet50']['gt']))
+            # for i in range(V):
+            #     for j in range(F):
+            #         input_prediction = calculate_prediction(input_hms[...,i,j], batch_bboxes[...,i,j])
+            #         tp, gt = get_true_positive(batch_keypoint[...,i,j], input_prediction, batch_num_person[:,j])
+            #         pckh['resnet50']['tp'] += tp
+            #         pckh['resnet50']['gt'] += gt
+            # print(torch.true_divide(pckh['resnet50']['tp'], pckh['resnet50']['gt']))
             # for i in range(V):
             #     for j in range(F):
             #         fusion_prediction = calculate_prediction(fusion_hms[...,i,j], batch_bboxes[...,i,j])
@@ -229,8 +228,7 @@ def main(hparams):
     
     print(pckh)
     torch.save(pckh, 'test_results/pckh.pth')
-        
-        
+     
         
 
 
