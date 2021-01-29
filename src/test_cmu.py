@@ -153,7 +153,7 @@ def main(hparams):
                 for h in hm:
                     HMs.append(h[:,:,jid])
                 # HMs = [hm[0][:,:,jid], hm[1][:,:,jid], hm[2][:,:,jid], hm[3][:,:,jid]]
-                points3d, values = generate_3d_cloud(HMs, cameras, Axs=None)
+                points3d, values = generate_3d_cloud(HMs, cameras, threshold=0.3,Axs=None)
                 if isinstance(points3d, list):
                     Points3d.append([])
                     continue
