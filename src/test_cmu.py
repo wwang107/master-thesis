@@ -91,7 +91,7 @@ def main(hparams):
     fuse_model = FusionNet(2*in_channels, out_channels, num_feature, input_frame=1)
     model = AggregateModel(resnet, Epipolar(debug=False), None, fuse_model, None,
                            weighted_mse_loss, in_channels, out_channels, 
-                           train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ)
+                           train_input_heatmap_encoder=is_train_input_encoder, num_camera_can_see=cfg.DATASET.NUM_VIEW, num_frame_can_see=cfg.DATASET.NUM_FRAME_PER_SUBSEQ, resnet_like=True)
     fusion_state_dict = torch.load('pretrain/fusion-model/with-resnet50/late-fusion/epoch=2.ckpt')
     model.load_state_dict(fusion_state_dict['state_dict'])
     temporal_model = TemporalUnet(in_channels, out_channels, num_feature,9)
