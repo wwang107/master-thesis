@@ -106,21 +106,20 @@ def main(hparams):
 
             out = model(batch_imgs, batch_krt)
             B,C,H,W,V,F = out['input_heatmap_encoder'].size()
-            # input_hms = out['input_heatmap_encoder'][0].cpu().numpy().transpose(1, 2, 0,3,4)
-            # fusion_hms = out['fusion_net'][0].cpu().numpy().transpose(1, 2, 0,3,4)
-            # temporal_hms = out['temporal_encoder'][0].cpu().numpy().transpose(1, 2, 0,3)
-            input_hms = out['input_heatmap_encoder']
-            fusion_hms = out['fusion_net']
-            temporal_hms = out['temporal_encoder']
+            input_hms = out['input_heatmap_encoder'][0].cpu().numpy().transpose(1, 2, 0,3,4)
+            fusion_hms = out['fusion_net'][0].cpu().numpy().transpose(1, 2, 0,3,4)
+            temporal_hms = out['temporal_encoder'][0].cpu().numpy().transpose(1, 2, 0,3)
+            # input_hms = out['input_heatmap_encoder']
+            # fusion_hms = out['fusion_net']
+            # temporal_hms = out['temporal_encoder']
             
-            # baseline_hms = torch.zeros((1,55,128,128,5)).to(device)
-            # for v in range(5):
-            #     baseline_hms[..., v] = baseline(batch_imgs[...,v,9//2])
-            # baseline_hms = baseline_hms[0].cpu().numpy().transpose(1, 2, 0,3)
             baseline_hms = torch.zeros((1,55,128,128,5)).to(device)
             for v in range(5):
                 baseline_hms[..., v] = baseline(batch_imgs[...,v,9//2])
-            # baseline_hms = baseline_hms
+            baseline_hms = baseline_hms[0].cpu().numpy().transpose(1, 2, 0,3)
+            # baseline_hms = torch.zeros((1,55,128,128,5)).to(device)
+            # for v in range(5):
+            #     baseline_hms[..., v] = baseline(batch_imgs[...,v,9//2])
             # 2D graph
             # imgs = batch_imgs[0,..., F//2]
             # imgs = imgs.clone().cpu().float()
