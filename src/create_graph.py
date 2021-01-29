@@ -322,7 +322,7 @@ def main(hparams):
                                             .cpu().numpy(), dsize=None, fx=1/2, fy=1/2)
                 ax.imshow(img)
                 for i,joints in enumerate(batch_keypoint[0:n]):
-                    img = add_joint_matplot(img, joints[0:17,...,c],ax, cmap(i))
+                    img = add_joint_matplot(joints[0:17,...,c],ax, cmap(i))
                 
             cmap = get_cmap(len(poses_baseline))
             for ax, cam in zip(Axs[1*5+0:1*5+5], cameras):
